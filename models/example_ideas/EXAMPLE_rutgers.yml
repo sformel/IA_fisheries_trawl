@@ -1,0 +1,382 @@
+id: https://example.org/rutgers-to-dwc-mapping
+name: rutgers-to-dwc-mapping
+description: Rutgers ROWLRS ERDDAP to Darwin Core mapping registry
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  dwc: http://rs.tdwg.org/dwc/terms/
+  rutgers: https://rowlrs-data.marine.rutgers.edu/erddap/
+
+default_prefix: rutgers
+
+# Event/Temporal fields
+
+cruise_id:
+  dwc_term: rutgers:cruise_id
+  dwc_term_label: "cruise_id"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "eventID"
+      source_field_uri: dwc:eventID
+      mapping_type: close
+      notes: "Cruise identifier; may be combined with station_id for unique event"
+
+station_id:
+  dwc_term: rutgers:station_id
+  dwc_term_label: "station_id"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "locationID"
+      source_field_uri: dwc:locationID
+      mapping_type: close
+      notes: "Station identifier"
+    - source_dataset: "dwc"
+      source_field: "eventID"
+      source_field_uri: dwc:eventID
+      mapping_type: close
+      notes: "Could be part of hierarchical eventID"
+
+day:
+  dwc_term: rutgers:day
+  dwc_term_label: "day"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "eventDate"
+      source_field_uri: dwc:eventDate
+      mapping_type: close
+      notes: "Day component; combine with month and year for complete eventDate in ISO 8601 format"
+
+month:
+  dwc_term: rutgers:month
+  dwc_term_label: "month"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "eventDate"
+      source_field_uri: dwc:eventDate
+      mapping_type: close
+      notes: "Month component; combine with day and year for complete eventDate in ISO 8601 format"
+
+year:
+  dwc_term: rutgers:year
+  dwc_term_label: "year"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "eventDate"
+      source_field_uri: dwc:eventDate
+      mapping_type: close
+      notes: "Year component; combine with month and day for complete eventDate in ISO 8601 format"
+
+index:
+  dwc_term: rutgers:index
+  dwc_term_label: "index"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "recordNumber"
+      source_field_uri: dwc:recordNumber
+      mapping_type: close
+      notes: "Record index; may serve as identifier within dataset"
+
+time_date_utc:
+  dwc_term: rutgers:time_date_utc
+  dwc_term_label: "time_date_utc"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "eventDate"
+      source_field_uri: dwc:eventDate
+      mapping_type: exact
+      notes: "Complete timestamp in UTC; can map directly to eventDate in ISO 8601 format"
+
+# Sampling fields
+
+drift_number:
+  dwc_term: rutgers:drift_number
+  dwc_term_label: "drift_number"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "eventRemarks"
+      source_field_uri: dwc:eventRemarks
+      mapping_type: related
+      notes: "Drift number at a station; best captured in eventRemarks or as part of eventID"
+
+sample_type:
+  dwc_term: rutgers:sample_type
+  dwc_term_label: "sample_type"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "samplingProtocol"
+      source_field_uri: dwc:samplingProtocol
+      mapping_type: close
+      notes: "Type of sample; relates to sampling protocol"
+
+effort_time_minutes:
+  dwc_term: rutgers:effort_time_minutes
+  dwc_term_label: "effort_time_minutes"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "samplingEffort"
+      source_field_uri: dwc:samplingEffort
+      mapping_type: exact
+      notes: "Maps to eMoF or samplingEffort with unit specification"
+
+tow_area_swept_m2:
+  dwc_term: rutgers:tow_area_swept_m2
+  dwc_term_label: "tow_area_swept_m2"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "sampleSizeValue"
+      source_field_uri: dwc:sampleSizeValue
+      mapping_type: exact
+      notes: "Area swept; maps to sampleSizeValue with sampleSizeUnit='square meters'"
+
+trap_number:
+  dwc_term: rutgers:trap_number
+  dwc_term_label: "trap_number"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "eventRemarks"
+      source_field_uri: dwc:eventRemarks
+      mapping_type: related
+      notes: "Trap identifier; best in eventRemarks or as sampling gear detail"
+
+# Location fields
+
+survey_area:
+  dwc_term: rutgers:survey_area
+  dwc_term_label: "survey_area"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "waterBody"
+      source_field_uri: dwc:waterBody
+      mapping_type: exact
+      notes: "Geographic survey area designation"
+
+depth_m:
+  dwc_term: rutgers:depth_m
+  dwc_term_label: "depth_m"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "minimumDepthInMeters"
+      source_field_uri: dwc:minimumDepthInMeters
+      mapping_type: close
+      notes: "Depth at start of tow; use with end_depth_m for depth range"
+    - source_dataset: "dwc"
+      source_field: "maximumDepthInMeters"
+      source_field_uri: dwc:maximumDepthInMeters
+      mapping_type: close
+      notes: "Use min/max of depth_m and end_depth_m"
+
+end_depth_m:
+  dwc_term: rutgers:end_depth_m
+  dwc_term_label: "end_depth_m"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "minimumDepthInMeters"
+      source_field_uri: dwc:minimumDepthInMeters
+      mapping_type: close
+      notes: "Depth at end of tow; use with depth_m for depth range"
+    - source_dataset: "dwc"
+      source_field: "maximumDepthInMeters"
+      source_field_uri: dwc:maximumDepthInMeters
+      mapping_type: close
+      notes: "Use min/max of depth_m and end_depth_m"
+
+latitude:
+  dwc_term: rutgers:latitude
+  dwc_term_label: "latitude"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "decimalLatitude"
+      source_field_uri: dwc:decimalLatitude
+      mapping_type: close
+      notes: "Start latitude; use with end_latitude for footprintWKT or calculate midpoint"
+
+longitude:
+  dwc_term: rutgers:longitude
+  dwc_term_label: "longitude"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "decimalLongitude"
+      source_field_uri: dwc:decimalLongitude
+      mapping_type: close
+      notes: "Start longitude; use with end_longitude for footprintWKT or calculate midpoint"
+
+end_latitude:
+  rutgers_term: rutgers:end_latitude
+  rutgers_term_label: "end_latitude"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "decimalLatitude"
+      source_field_uri: dwc:decimalLatitude
+      mapping_type: close
+      notes: "End latitude; combine with start for footprintWKT LINESTRING"
+
+end_longitude:
+  dwc_term: rutgers:end_longitude
+  dwc_term_label: "end_longitude"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "decimalLongitude"
+      source_field_uri: dwc:decimalLongitude
+      mapping_type: close
+      notes: "End longitude; combine with start for footprintWKT LINESTRING"
+
+# Taxonomic fields
+
+species_id:
+  dwc_term: rutgers:species_id
+  dwc_term_label: "species_id"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "taxonID"
+      source_field_uri: dwc:taxonID
+      mapping_type: close
+      notes: "Species identifier; may need to be converted to standard taxonomy URI"
+
+species_scientific_name:
+  dwc_term: rutgers:species_scientific_name
+  dwc_term_label: "species_scientific_name"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "scientificName"
+      source_field_uri: dwc:scientificName
+      mapping_type: exact
+      notes: "Scientific name of species"
+
+species_common_name:
+  dwc_term: rutgers:species_common_name
+  dwc_term_label: "species_common_name"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "vernacularName"
+      source_field_uri: dwc:vernacularName
+      mapping_type: exact
+      notes: "Common name of species"
+
+# Measurement fields
+
+length_mm:
+  dwc_term: rutgers:length_mm
+  dwc_term_label: "length_mm"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "measurementValue"
+      source_field_uri: dwc:measurementValue
+      mapping_type: related
+      notes: "Maps to eMoF with measurementType from length_type and measurementUnit='mm'"
+
+length_type:
+  dwc_term: rutgers:length_type
+  dwc_term_label: "length_type"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "measurementType"
+      source_field_uri: dwc:measurementType
+      mapping_type: related
+      notes: "Determines measurementType for length measurements in eMoF; relates to P01 vocabulary"
+
+mean_length_mm:
+  dwc_term: rutgers:mean_length_mm
+  dwc_term_label: "mean_length_mm"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "measurementValue"
+      source_field_uri: dwc:measurementValue
+      mapping_type: related
+      notes: "Maps to eMoF with measurementType='mean length' and measurementUnit='mm'"
+
+std_length_mm:
+  dwc_term: rutgers:std_length_mm
+  dwc_term_label: "std_length_mm"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "measurementValue"
+      source_field_uri: dwc:measurementValue
+      mapping_type: related
+      notes: "Maps to eMoF with measurementType='length standard deviation' and measurementUnit='mm'"
+
+size_class:
+  dwc_term: rutgers:size_class
+  dwc_term_label: "size_class"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "lifeStage"
+      source_field_uri: dwc:lifeStage
+      mapping_type: close
+      notes: "Size class grouping; approximate mapping to lifeStage or occurrenceRemarks"
+
+bottom_temperature_c:
+  dwc_term: rutgers:bottom_temperature_c
+  dwc_term_label: "bottom_temperature_c"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "measurementValue"
+      source_field_uri: dwc:measurementValue
+      mapping_type: related
+      notes: "Maps to eMoF with appropriate P01 term for bottom temperature and measurementUnit='degrees Celsius'"
+
+# Catch/Abundance fields
+
+total_count:
+  dwc_term: rutgers:total_count
+  dwc_term_label: "total_count"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "individualCount"
+      source_field_uri: dwc:individualCount
+      mapping_type: exact
+      notes: "Total count of individuals"
+    - source_dataset: "dwc"
+      source_field: "organismQuantity"
+      source_field_uri: dwc:organismQuantity
+      mapping_type: exact
+      notes: "Can also map to organismQuantity with organismQuantityType='individuals'"
+
+total_weight_kg:
+  dwc_term: rutgers:total_weight_kg
+  dwc_term_label: "total_weight_kg"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "organismQuantity"
+      source_field_uri: dwc:organismQuantity
+      mapping_type: exact
+      notes: "Maps to organismQuantity with organismQuantityType='weight in kg'"
+
+clam_catch_abundance:
+  dwc_term: rutgers:clam_catch_abundance
+  dwc_term_label: "clam_catch_abundance"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "individualCount"
+      source_field_uri: dwc:individualCount
+      mapping_type: exact
+      notes: "Clam-specific abundance count"
+
+clam_catch_subsample_volume_bu:
+  dwc_term: rutgers:clam_catch_subsample_volume_bu
+  dwc_term_label: "clam_catch_subsample_volume_bu"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "measurementValue"
+      source_field_uri: dwc:measurementValue
+      mapping_type: related
+      notes: "Maps to eMoF with measurementType='subsample volume' and measurementUnit='bushels'"
+
+clam_catch_volume_bu:
+  dwc_term: rutgers:clam_catch_volume_bu
+  dwc_term_label: "clam_catch_volume_bu"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "measurementValue"
+      source_field_uri: dwc:measurementValue
+      mapping_type: related
+      notes: "Maps to eMoF with measurementType='catch volume' and measurementUnit='bushels'"
+
+clam_id:
+  dwc_term: rutgers:clam_id
+  dwc_term_label: "clam_id"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "occurrenceID"
+      source_field_uri: dwc:occurrenceID
+      mapping_type: close
+      notes: "Individual clam identifier"

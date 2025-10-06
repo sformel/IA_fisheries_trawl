@@ -1,0 +1,21 @@
+# In DwC registry
+waterBody:
+  dwc_term: dwc:waterBody
+  dwc_term_label: "waterBody"
+  source_mappings:
+    - source_dataset: "smast"
+      source_field: "Project Area"
+      source_field_uri: smast:project_area
+      mapping_type: close
+      notes: "Project area relates to water body but may need interpretation"
+
+# In SMAST registry
+project_area:
+  dwc_term: smast:project_area
+  dwc_term_label: "Project Area"
+  source_mappings:
+    - source_dataset: "dwc"
+      source_field: "waterBody"
+      source_field_uri: dwc:waterBody
+      mapping_type: close
+      notes: "Project area relates to water body but may need interpretation"

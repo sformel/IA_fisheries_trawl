@@ -1,0 +1,431 @@
+id: https://w3id.org/example/rowlrs/dwc-ow1-publication
+name: dwc-ow1-publication
+title: Darwin Core Archive Publication Model for OW1 Catch Data
+description: >-
+  Darwin Core Archive structure defining how Rutgers OW1 Bottom Trawl Survey catch data
+  should be published as a DwC-A. This schema defines Event core, Occurrence extension,
+  and ExtendedMeasurementOrFact (eMoF) extension classes with mappings back to source OW1 fields.
+  Uses SKOS mapping predicates in reverse (DwC terms map to OW1 fields) to document
+  both the semantic relationships and the publishing structure.
+
+see_also:
+  - https://dwc.tdwg.org/terms/
+  - https://rs.gbif.org/extension/dwc/measurements_or_facts.xml
+  - https://rowlrs-data.marine.rutgers.edu/erddap/info/bottom_trawl_survey_ow1_catch/index.json
+  - https://rowlrs-data.marine.rutgers.edu/erddap/info/bottom_trawl_survey_ow1_tows/index.json
+  - https://rowlrs-data.marine.rutgers.edu/erddap/info/species_id_codes/index.json
+
+imports:
+  - linkml:types
+
+default_prefix: dwc
+default_range: string
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  dwc: http://rs.tdwg.org/dwc/terms/
+  ow1_catch: https://w3id.org/example/rowlrs/ow1-catch/
+  skos: http://www.w3.org/2004/02/skos/core#
+
+comments:
+  - "NOTE: URIs use https://w3id.org/example/ as a placeholder namespace. Replace with registered namespace before production use."
+  - "This schema defines the TARGET structure for DwC-A publication, with mappings showing which OW1 source fields populate each DwC term"
+
+classes:
+  DarwinCoreArchive:
+    description: >-
+      Container representing a complete Darwin Core Archive for OW1 catch data.
+    tree_root: true
+    slots:
+      - events
+      - occurrences
+      - measurements_or_facts
+    
+  Event:
+    description: >-
+      Event core records representing sampling events (trawl tows/stations) in the OW1 survey.
+      Each event represents a discrete trawl tow at a specific location and time.
+    comments:
+      - "One Event record per TowRecord (station/tow)"
+      - "Populated primarily from TowRecord class"
+      - "cruise serves as parentEventID, cruise+station combination as eventID"
+    slots:
+      - eventID
+      - parentEventID
+      - eventDate
+      - locationID
+      - decimalLatitude
+      - decimalLongitude
+      - minimumDepthInMeters
+      - maximumDepthInMeters
+      - waterBody
+      - samplingProtocol
+      - sampleSizeValue
+      - sampleSizeUnit
+      
+  Occurrence:
+    description: >-
+      Occurrence extension records representing species observations within sampling events.
+      Each occurrence represents a single species (or species+size_class) caught during a tow.
+    comments:
+      - "One Occurrence record per CatchRecord (species or species+size_class per station)"
+      - "Links to Event via eventID"
+    slots:
+      - occurrenceID
+      - eventID
+      - basisOfRecord
+      - vernacularName
+      - scientificName
+      - taxonRank
+      - kingdom
+      - occurrenceStatus
+      - organismQuantity
+      - organismQuantityType
+      - occurrenceRemarks
+      
+  MeasurementOrFact:
+    description: >-
+      ExtendedMeasurementOrFact (eMoF) extension records for measurements and observations.
+      Used for length measurements, weights, and other quantitative data.
+    comments:
+      - "Multiple eMoF records generated per CatchRecord for different measurement types"
+      - "Links to Occurrence via occurrenceID or Event via eventID"
+    slots:
+      - measurementID
+      - occurrenceID
+      - eventID
+      - measurementType
+      - measurementValue
+      - measurementUnit
+      - measurementRemarks
+
+slots:
+  # Container slots
+  events:
+    description: List of Event core records
+    range: Event
+    multivalued: true
+    inlined: true
+    
+  occurrences:
+    description: List of Occurrence extension records
+    range: Occurrence
+    multivalued: true
+    inlined: true
+    
+  measurements_or_facts:
+    description: List of MeasurementOrFact extension records
+    range: MeasurementOrFact
+    multivalued: true
+    inlined: true
+
+  # Event core terms
+  eventID:
+    description: >-
+      An identifier for the set of information associated with an Event.
+      For OW1, constructed from cruise and station identifiers.
+    range: string
+    required: true
+    identifier: true
+    slot_uri: dwc:eventID
+    exact_mappings:
+      - ow1_catch:tow_cruise
+      - ow1_catch:tow_station
+    comments:
+      - "Combine TowRecord.tow_cruise + TowRecord.tow_station to create unique eventID"
+      - "Example: 'OW1_BT2301_C01'"
+      - "This links Event to Occurrence records"
+      
+  parentEventID:
+    description: >-
+      An identifier for the broader Event that groups this Event.
+      For OW1, the cruise identifier.
+    range: string
+    slot_uri: dwc:parentEventID
+    exact_mappings:
+      - ow1_catch:tow_cruise
+    comments:
+      - "Use TowRecord.tow_cruise as parent event for hierarchical event structure"
+      - "Represents the survey cruise that contains multiple tow events"
+      
+  eventDate:
+    description: >-
+      The date-time during which an Event occurred.
+    range: string
+    slot_uri: dwc:eventDate
+    exact_mappings:
+      - ow1_catch:tow_time
+    comments:
+      - "Direct mapping from TowRecord.tow_time"
+      - "Format as ISO 8601 datetime"
+      
+  locationID:
+    description: >-
+      An identifier for the set of location information.
+    range: string
+    slot_uri: dwc:locationID
+    exact_mappings:
+      - ow1_catch:tow_station
+    comments:
+      - "TowRecord.tow_station serves as locationID"
+      
+  decimalLatitude:
+    description: >-
+      The geographic latitude in decimal degrees of the geographic center of a Location.
+    range: float
+    slot_uri: dwc:decimalLatitude
+    unit:
+      ucum_code: deg
+    related_mappings:
+      - ow1_catch:start_latitude
+      - ow1_catch:end_latitude
+    comments:
+      - "Calculate midpoint from TowRecord.start_latitude and TowRecord.end_latitude"
+      - "Or use start_latitude as representative point"
+      
+  decimalLongitude:
+    description: >-
+      The geographic longitude in decimal degrees of the geographic center of a Location.
+    range: float
+    slot_uri: dwc:decimalLongitude
+    unit:
+      ucum_code: deg
+    related_mappings:
+      - ow1_catch:start_longitude
+      - ow1_catch:end_longitude
+    comments:
+      - "Calculate midpoint from TowRecord.start_longitude and TowRecord.end_longitude"
+      - "Or use start_longitude as representative point"
+      
+  minimumDepthInMeters:
+    description: >-
+      The lesser depth of a range of depth below the local surface, in meters.
+    range: float
+    slot_uri: dwc:minimumDepthInMeters
+    unit:
+      ucum_code: m
+    comments:
+      - "No direct mapping in current OW1 catch dataset"
+      - "Requires joining with station/tow metadata table"
+      
+  maximumDepthInMeters:
+    description: >-
+      The greater depth of a range of depth below the local surface, in meters.
+    range: float
+    slot_uri: dwc:maximumDepthInMeters
+    unit:
+      ucum_code: m
+    comments:
+      - "No direct mapping in current OW1 catch dataset"
+      - "Requires joining with station/tow metadata table"
+      
+  waterBody:
+    description: >-
+      The name of the water body in which the Location occurs.
+    range: string
+    slot_uri: dwc:waterBody
+    comments:
+      - "No direct mapping in current OW1 catch dataset"
+      - "Could use 'Atlantic Ocean' or 'Mid-Atlantic Bight' based on survey area"
+      
+  samplingProtocol:
+    description: >-
+      The names of, references to, or descriptions of the methods or protocols used during an Event.
+    range: string
+    slot_uri: dwc:samplingProtocol
+    comments:
+      - "Document from dataset metadata: bottom trawl, 3 knots, 20 minutes"
+      - "Include length_type measurement protocols"
+    related_mappings:
+      - ow1_catch:length_type
+      
+  sampleSizeValue:
+    description: >-
+      A numeric value for a measurement of the size of a sample in a sampling event.
+    range: float
+    slot_uri: dwc:sampleSizeValue
+    comments:
+      - "Could represent tow duration (20 minutes) or distance"
+      
+  sampleSizeUnit:
+    description: >-
+      The unit of measurement of the size of a sample in a sampling event.
+    range: string
+    slot_uri: dwc:sampleSizeUnit
+    comments:
+      - "If using tow duration: 'minutes'"
+
+  # Occurrence extension terms
+  occurrenceID:
+    description: >-
+      An identifier for the Occurrence.
+      For OW1, constructed from eventID + species + size_class, or can use index.
+    range: string
+    required: true
+    identifier: true
+    slot_uri: dwc:occurrenceID
+    related_mappings:
+      - ow1_catch:index
+    comments:
+      - "Can use OW1 index as base for occurrenceID"
+      - "Or combine eventID + species_common_name + size_class (if present)"
+      - "Example: 'OW1_BT2301_C01_BUTTERFISH_LARGE' or 'OW1_CATCH_1234'"
+      
+  basisOfRecord:
+    description: >-
+      The specific nature of the data record.
+    range: string
+    slot_uri: dwc:basisOfRecord
+    comments:
+      - "Set to 'HumanObservation' for all OW1 catch records"
+      
+  vernacularName:
+    description: >-
+      A common or vernacular name.
+    range: string
+    slot_uri: dwc:vernacularName
+    exact_mappings:
+      - ow1_catch:species_common_name
+    comments:
+      - "Direct mapping from CatchRecord.species_common_name"
+      
+  scientificName:
+    description: >-
+      The full scientific name, with authorship and date information if known.
+    range: string
+    slot_uri: dwc:scientificName
+    exact_mappings:
+      - ow1_catch:species_scientific_name_lookup
+    comments:
+      - "CatchRecord only has common names"
+      - "Lookup scientific name via SpeciesCode table using species_common_name match"
+      - "Use SpeciesCode.species_scientific_name_lookup"
+      
+  scientificNameID:
+    description: >-
+      An identifier for the nomenclatural (not taxonomic) details of a scientific name.
+    range: string
+    slot_uri: dwc:scientificNameID
+    exact_mappings:
+      - ow1_catch:itis_tsn
+    comments:
+      - "Lookup ITIS TSN via SpeciesCode table using species_common_name match"
+      - "Convert SpeciesCode.itis_tsn to LSID format: urn:lsid:itis.gov:itis_tsn:XXXXXX"
+      - "Example: if itis_tsn = 12345, then scientificNameID = 'urn:lsid:itis.gov:itis_tsn:12345'"
+      
+  taxonRank:
+    description: >-
+      The taxonomic rank of the most specific name in the scientificName.
+    range: string
+    slot_uri: dwc:taxonRank
+    comments:
+      - "Derive from ITIS via SpeciesCode.itis_tsn lookup"
+      - "Typically 'species' or 'genus'"
+      
+  kingdom:
+    description: >-
+      The full scientific name of the kingdom in which the taxon is classified.
+    range: string
+    slot_uri: dwc:kingdom
+    comments:
+      - "Derive from ITIS via SpeciesCode.itis_tsn lookup"
+      - "Typically 'Animalia'"
+      
+  occurrenceStatus:
+    description: >-
+      A statement about the presence or absence of a Taxon at a Location.
+    range: string
+    slot_uri: dwc:occurrenceStatus
+    comments:
+      - "Set to 'present' for all catch records"
+      - "Zero catches (absences) not currently in OW1 catch dataset"
+      
+  organismQuantity:
+    description: >-
+      A number or enumeration value for the quantity of organisms.
+    range: string
+    slot_uri: dwc:organismQuantity
+    close_mappings:
+      - ow1_catch:total_count
+      - ow1_catch:total_weight
+    comments:
+      - "Can represent either count or weight depending on organismQuantityType"
+      - "May generate two Occurrence records per CatchRecord (one for count, one for weight)"
+      
+  organismQuantityType:
+    description: >-
+      The type of quantification system used for the quantity of organisms.
+    range: string
+    slot_uri: dwc:organismQuantityType
+    comments:
+      - "Set to 'individuals' when using total_count"
+      - "Set to 'biomass' when using total_weight"
+      
+  occurrenceRemarks:
+    description: >-
+      Comments or notes about the Occurrence.
+    range: string
+    slot_uri: dwc:occurrenceRemarks
+    related_mappings:
+      - ow1_catch:size_class
+    comments:
+      - "Include size_class information if present"
+      - "Example: 'Size class: LARGE'"
+
+  # MeasurementOrFact extension terms
+  measurementID:
+    description: >-
+      An identifier for the MeasurementOrFact.
+    range: string
+    required: true
+    identifier: true
+    slot_uri: dwc:measurementID
+    comments:
+      - "Generate unique ID for each measurement"
+      - "Example: 'OW1_BT2301_C01_BUTTERFISH_LARGE_MEAN_LENGTH'"
+      
+  measurementType:
+    description: >-
+      The nature of the measurement, fact, characteristic, or assertion.
+    range: string
+    required: true
+    slot_uri: dwc:measurementType
+    comments:
+      - "Examples: 'mean length', 'length standard deviation', 'total weight', 'total count'"
+      - "Should use controlled vocabulary (e.g., BODC P01 codes) when possible"
+    related_mappings:
+      - ow1_catch:length_type
+      
+  measurementValue:
+    description: >-
+      The value of the measurement, fact, characteristic, or assertion.
+    range: string
+    required: true
+    slot_uri: dwc:measurementValue
+    related_mappings:
+      - ow1_catch:mean_length
+      - ow1_catch:std_length
+      - ow1_catch:total_weight
+      - ow1_catch:total_count
+    comments:
+      - "Direct value from source measurement field"
+      
+  measurementUnit:
+    description: >-
+      The units associated with the measurementValue.
+    range: string
+    slot_uri: dwc:measurementUnit
+    comments:
+      - "From OW1: 'mm' for lengths, 'kg' for weights, 'individuals' for counts"
+      - "Should use controlled vocabulary (e.g., UCUM codes)"
+      
+  measurementRemarks:
+    description: >-
+      Comments or notes accompanying the MeasurementOrFact.
+    range: string
+    slot_uri: dwc:measurementRemarks
+    related_mappings:
+      - ow1_catch:length_type
+    comments:
+      - "Document length measurement type (FL, TL, DW, CW, ML, SW, SH)"
+      - "Include any relevant context from size_class"

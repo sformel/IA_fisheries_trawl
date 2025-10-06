@@ -1,0 +1,9 @@
+ERDDAP Data Source
+       ↓
+[Extract] Read data using ERDDAP API
+       ↓
+OW1 Catch Records (validated against ow1-catch-schema.yaml)
+       ↓
+[Transform] Use dwc-ow1-publication.yaml + eml-ow1-publication.yaml as "recipes"
+       ↓
+Darwin Core Archive files + EML.xml

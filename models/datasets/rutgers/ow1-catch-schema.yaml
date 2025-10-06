@@ -1,0 +1,535 @@
+id: https://w3id.org/example/rowlrs/ow1-catch
+name: ow1-catch
+title: Rutgers OW1 Bottom Trawl Survey - Catch Data
+description: >-
+  Fisheries Monitoring in Ocean Wind 01. Two seasonal pre-construction surveys.
+  Twenty tows conducted in the lease area and twenty in the control area each season (160/year total).
+  Tows conducted at three knots for 20 minutes. Trawl data will inform relative biomass (kg/tow) by species,
+  size frequency by species, condition index (length-weight) by species, community assemblage,
+  and gut content of a subset of species.
+
+see_also:
+  - https://rowlrs-data.marine.rutgers.edu/erddap/info/bottom_trawl_survey_ow1_catch/index.json
+  - https://rowlrs-data.marine.rutgers.edu/erddap/info/bottom_trawl_survey_ow1_tows/index.json
+  - https://rowlrs-data.marine.rutgers.edu/erddap/info/species_id_codes/index.json
+
+default_prefix: ow1_catch
+default_range: string
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  ow1_catch: https://w3id.org/example/rowlrs/ow1-catch/
+  schema: http://schema.org/
+  UCUM: http://unitsofmeasure.org/ucum-essence.xml
+  
+comments:
+  - "NOTE: Column names match ACTUAL ERDDAP datasets as of 2025-10-06"
+  - "NOTE: URIs use https://w3id.org/example/ as a placeholder namespace. Replace with registered namespace before production use."
+  
+imports:
+  - linkml:types
+
+classes:
+  DatasetMetadata:
+    description: >-
+      Metadata describing the dataset as a whole, including provenance, institutional information,
+      and project details.
+    slots:
+      - acknowledgement
+      - cdm_data_type
+      - comment
+      - contributors
+      - conventions
+      - creator_email
+      - creator_institution
+      - creator_name
+      - creator_type
+      - creator_url
+      - geospatial_bounds_crs
+      - geospatial_vertical_positive
+      - dataset_id
+      - info_url
+      - institution
+      - keywords
+      - license
+      - platform_name
+      - program
+      - project
+      - publisher_email
+      - publisher_institution
+      - publisher_name
+      - publisher_type
+      - source_url
+      - standard_name_vocabulary
+      - summary
+      - dataset_title
+
+  Contributor:
+    description: >-
+      A person or organization that contributed to the dataset.
+    slots:
+      - contributor_name
+      - contributor_role
+
+  TowRecord:
+    description: >-
+      A record representing a single trawl tow/station event.
+      ERDDAP dataset: bottom_trawl_survey_ow1_tows
+    slots:
+      - index
+      - time
+      - cruise
+      - station
+      - latitude
+      - end_latitude
+      - longitude
+      - end_longitude
+
+  CatchRecord:
+    description: >-
+      A record representing catch data from a single species (or species+size_class combination)
+      collected during a bottom trawl survey tow/station.
+      ERDDAP dataset: bottom_trawl_survey_ow1_catch
+    slots:
+      - index
+      - cruise
+      - station
+      - species_common_name
+      - size_class
+      - total_weight
+      - total_count
+      - length_type
+      - mean_length
+      - std_length
+
+  SpeciesCode:
+    description: >-
+      Taxonomic lookup table linking common names to scientific names and ITIS TSNs.
+      ERDDAP dataset: species_id_codes
+    slots:
+      - speciesID
+      - species_scientific_name
+      - ITIS_tsn
+      - species_common_name
+
+slots:
+  # DatasetMetadata slots (from NC_GLOBAL attributes)
+  acknowledgement:
+    description: Funding and acknowledgement information
+    range: string
+    slot_uri: ow1_catch:acknowledgement
+    annotations:
+      erddap_source: "NC_GLOBAL.acknowledgement"
+    
+  cdm_data_type:
+    description: Climate and Forecast (CF) / COARDS data type
+    range: string
+    slot_uri: ow1_catch:cdm_data_type
+    annotations:
+      erddap_source: "NC_GLOBAL.cdm_data_type"
+    
+  comment:
+    description: General comments about the survey
+    range: string
+    slot_uri: ow1_catch:comment
+    annotations:
+      erddap_source: "NC_GLOBAL.comment"
+    
+  contributors:
+    description: List of people and organizations that contributed to the dataset
+    range: Contributor
+    multivalued: true
+    slot_uri: ow1_catch:contributors
+    annotations:
+      erddap_source: "NC_GLOBAL.contributor_name, NC_GLOBAL.contributor_role"
+    
+  conventions:
+    description: Metadata conventions followed by this dataset
+    range: string
+    slot_uri: ow1_catch:conventions
+    annotations:
+      erddap_source: "NC_GLOBAL.Conventions"
+    
+  creator_email:
+    description: Email address of the dataset creator
+    range: string
+    slot_uri: ow1_catch:creator_email
+    annotations:
+      erddap_source: "NC_GLOBAL.creator_email"
+    
+  creator_institution:
+    description: Institution of the dataset creator
+    range: string
+    slot_uri: ow1_catch:creator_institution
+    annotations:
+      erddap_source: "NC_GLOBAL.creator_institution"
+    
+  creator_name:
+    description: Name of the dataset creator
+    range: string
+    slot_uri: ow1_catch:creator_name
+    annotations:
+      erddap_source: "NC_GLOBAL.creator_name"
+    
+  creator_type:
+    description: Type of creator (e.g., person, group, organization)
+    range: string
+    slot_uri: ow1_catch:creator_type
+    annotations:
+      erddap_source: "NC_GLOBAL.creator_type"
+    
+  creator_url:
+    description: URL for the creator or creator's institution
+    range: string
+    slot_uri: ow1_catch:creator_url
+    annotations:
+      erddap_source: "NC_GLOBAL.creator_url"
+    
+  geospatial_bounds_crs:
+    description: Coordinate reference system for geospatial bounds
+    range: string
+    slot_uri: ow1_catch:geospatial_bounds_crs
+    annotations:
+      erddap_source: "NC_GLOBAL.geospatial_bounds_crs"
+    
+  geospatial_vertical_positive:
+    description: Direction of positive vertical coordinates
+    range: string
+    slot_uri: ow1_catch:geospatial_vertical_positive
+    annotations:
+      erddap_source: "NC_GLOBAL.geospatial_vertical_positive"
+    
+  dataset_id:
+    description: Unique identifier for the dataset
+    range: string
+    identifier: true
+    slot_uri: ow1_catch:dataset_id
+    annotations:
+      erddap_source: "NC_GLOBAL.id"
+    
+  info_url:
+    description: URL for more information about the dataset or project
+    range: string
+    slot_uri: ow1_catch:info_url
+    annotations:
+      erddap_source: "NC_GLOBAL.infoUrl"
+    
+  institution:
+    description: Institution responsible for the dataset
+    range: string
+    slot_uri: ow1_catch:institution
+    annotations:
+      erddap_source: "NC_GLOBAL.institution"
+    
+  keywords:
+    description: Keywords describing the dataset content
+    range: string
+    slot_uri: ow1_catch:keywords
+    annotations:
+      erddap_source: "NC_GLOBAL.keywords"
+    
+  license:
+    description: License or data use agreement for the dataset
+    range: string
+    slot_uri: ow1_catch:license
+    annotations:
+      erddap_source: "NC_GLOBAL.license"
+    
+  platform_name:
+    description: Name of the research vessel or platform used for data collection
+    range: string
+    slot_uri: ow1_catch:platform_name
+    annotations:
+      erddap_source: "NC_GLOBAL.platform_name"
+    
+  program:
+    description: Research program under which data was collected
+    range: string
+    slot_uri: ow1_catch:program
+    annotations:
+      erddap_source: "NC_GLOBAL.program"
+    
+  project:
+    description: Specific project or projects associated with the dataset
+    range: string
+    slot_uri: ow1_catch:project
+    annotations:
+      erddap_source: "NC_GLOBAL.project"
+    
+  publisher_email:
+    description: Email address of the dataset publisher
+    range: string
+    slot_uri: ow1_catch:publisher_email
+    annotations:
+      erddap_source: "NC_GLOBAL.publisher_email"
+    
+  publisher_institution:
+    description: Institution of the dataset publisher
+    range: string
+    slot_uri: ow1_catch:publisher_institution
+    annotations:
+      erddap_source: "NC_GLOBAL.publisher_institution"
+    
+  publisher_name:
+    description: Name of the dataset publisher
+    range: string
+    slot_uri: ow1_catch:publisher_name
+    annotations:
+      erddap_source: "NC_GLOBAL.publisher_name"
+    
+  publisher_type:
+    description: Type of publisher (e.g., person, group, organization)
+    range: string
+    slot_uri: ow1_catch:publisher_type
+    annotations:
+      erddap_source: "NC_GLOBAL.publisher_type"
+    
+  source_url:
+    description: Source URL for the data files
+    range: string
+    slot_uri: ow1_catch:source_url
+    annotations:
+      erddap_source: "NC_GLOBAL.sourceUrl"
+    
+  standard_name_vocabulary:
+    description: Vocabulary standard used for variable names
+    range: string
+    slot_uri: ow1_catch:standard_name_vocabulary
+    annotations:
+      erddap_source: "NC_GLOBAL.standard_name_vocabulary"
+    
+  summary:
+    description: Summary description of the dataset
+    range: string
+    slot_uri: ow1_catch:summary
+    annotations:
+      erddap_source: "NC_GLOBAL.summary"
+    
+  dataset_title:
+    description: Title of the dataset
+    range: string
+    slot_uri: ow1_catch:dataset_title
+    annotations:
+      erddap_source: "NC_GLOBAL.title"
+  
+  # Contributor slots
+  contributor_name:
+    description: Name of the contributor
+    range: string
+    required: true
+    slot_uri: ow1_catch:contributor_name
+    annotations:
+      erddap_source: "NC_GLOBAL.contributor_name"
+    
+  contributor_role:
+    description: Role of the contributor in the project
+    range: string
+    required: true
+    slot_uri: ow1_catch:contributor_role
+    annotations:
+      erddap_source: "NC_GLOBAL.contributor_role"
+  
+  # TowRecord slots (from bottom_trawl_survey_ow1_tows)
+  time:
+    description: Date and time of the tow in ISO 8601 format
+    range: string
+    pattern: "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}Z$"
+    slot_uri: ow1_catch:time
+    annotations:
+      erddap_source: "time"
+      erddap_standard_name: "time"
+      format: "ISO 8601 datetime string (YYYY-MM-DDTHH:MM:SSZ)"
+  
+  latitude:
+    description: Latitude coordinates entered at start of trawl
+    range: float
+    required: true
+    unit:
+      ucum_code: deg
+    slot_uri: ow1_catch:latitude
+    annotations:
+      erddap_source: "latitude (start_latitude)"
+      erddap_standard_name: "latitude"
+      erddap_units: "degrees_north"
+  
+  longitude:
+    description: Longitude coordinates entered at start of trawl
+    range: float
+    required: true
+    unit:
+      ucum_code: deg
+    slot_uri: ow1_catch:longitude
+    annotations:
+      erddap_source: "longitude (start_longitude)"
+      erddap_standard_name: "longitude"
+      erddap_units: "degrees_east"
+  
+  end_latitude:
+    description: Latitude coordinates entered at end of trawl
+    range: float
+    unit:
+      ucum_code: deg
+    slot_uri: ow1_catch:end_latitude
+    annotations:
+      erddap_source: "end_latitude"
+      erddap_standard_name: "latitude"
+      erddap_units: "degrees_north"
+  
+  end_longitude:
+    description: Longitude coordinates entered at end of trawl
+    range: float
+    unit:
+      ucum_code: deg
+    slot_uri: ow1_catch:end_longitude
+    annotations:
+      erddap_source: "end_longitude"
+      erddap_standard_name: "longitude"
+      erddap_units: "degrees_east"
+  
+  # CatchRecord slots (from bottom_trawl_survey_ow1_catch)
+  index:
+    description: Unique sequential identifier for each record
+    range: integer
+    identifier: true
+    required: true
+    minimum_value: 0
+    annotations:
+      erddap_source: "index"
+    
+  cruise:
+    description: Unique identifier for the survey cruise
+    range: string
+    required: true
+    slot_uri: ow1_catch:cruise
+    annotations:
+      erddap_source: "cruise"
+    
+  station:
+    description: >-
+      Station identifier. C/I prefix designates the type of station:
+      Control (C) - open sand bottom without turbine placement,
+      Impact (I) - OW1 Wind Farm lease area.
+    range: string
+    required: true
+    slot_uri: ow1_catch:station
+    comments:
+      - Control stations are reference areas without wind farm infrastructure
+      - Impact stations are within the wind farm lease area
+    annotations:
+      erddap_source: "station"
+    
+  species_common_name:
+    description: Common name of the species caught
+    range: string
+    required: true
+    slot_uri: ow1_catch:species_common_name
+    annotations:
+      erddap_source: "species_common_name"
+    
+  size_class:
+    description: >-
+      Size class designation when distinct/noticeable size differences exist within the same species
+      in a catch. Used to avoid biasing randomly selected length measurements.
+    range: string
+    slot_uri: ow1_catch:size_class
+    annotations:
+      erddap_source: "size_class"
+    
+  total_weight:
+    description: >-
+      Total weight in kilograms of measured individuals for this species/size_class combination.
+    range: float
+    unit:
+      ucum_code: kg
+    minimum_value: 0.0
+    slot_uri: ow1_catch:total_weight
+    annotations:
+      erddap_source: "total_weight"
+      erddap_units: "kg"
+    
+  total_count:
+    description: Total count of individuals in this species/size_class combination
+    range: integer
+    minimum_value: 0
+    slot_uri: ow1_catch:total_count
+    annotations:
+      erddap_source: "total_count"
+    
+  length_type:
+    description: Type of length measurement used for this species
+    range: LengthTypeEnum
+    slot_uri: ow1_catch:length_type
+    annotations:
+      erddap_source: "length_type"
+    
+  mean_length:
+    description: Mean length of measured individuals
+    range: float
+    unit:
+      ucum_code: mm
+    minimum_value: 0.0
+    slot_uri: ow1_catch:mean_length
+    annotations:
+      erddap_source: "mean_length"
+      erddap_units: "mm"
+    
+  std_length:
+    description: Standard deviation of length measurements
+    range: float
+    unit:
+      ucum_code: mm
+    minimum_value: 0.0
+    slot_uri: ow1_catch:std_length
+    annotations:
+      erddap_source: "std_length"
+      erddap_units: "mm"
+
+  # SpeciesCode slots (from species_id_codes)
+  speciesID:
+    description: Numeric identifier for species based on NOAA National Marine Fisheries Service codes
+    range: float
+    identifier: true
+    slot_uri: ow1_catch:speciesID
+    annotations:
+      erddap_source: "speciesID"
+  
+  species_scientific_name:
+    description: Scientific name of the species
+    range: string
+    required: true
+    slot_uri: ow1_catch:species_scientific_name
+    annotations:
+      erddap_source: "species_scientific_name"
+  
+  ITIS_tsn:
+    description: Integrated Taxonomic Information System (ITIS) taxonomic serial number
+    range: float
+    slot_uri: ow1_catch:ITIS_tsn
+    annotations:
+      erddap_source: "ITIS_tsn"
+
+enums:
+  LengthTypeEnum:
+    description: Standardized length measurement types used in trawl surveys
+    permissible_values:
+      FL:
+        description: Fork Length
+        meaning: ow1_catch:fork_length
+      TL:
+        description: Total Length
+        meaning: ow1_catch:total_length
+      DW:
+        description: Disk Width (for large stingrays)
+        meaning: ow1_catch:disk_width
+      CW:
+        description: Carapace Width (for crabs, horseshoe crabs, and species with a carapace)
+        meaning: ow1_catch:carapace_width
+      ML:
+        description: Mantle Length (for squid, measuring just the length of the mantle tissue)
+        meaning: ow1_catch:mantle_length
+      SW:
+        description: Shell Width (for general bivalves and clams)
+        meaning: ow1_catch:shell_width
+      SH:
+        description: Shell Height (for scallops)
+        meaning: ow1_catch:shell_height

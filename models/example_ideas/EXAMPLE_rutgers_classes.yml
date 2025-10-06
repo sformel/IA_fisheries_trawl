@@ -1,0 +1,337 @@
+id: https://example.org/rutgers-dwca-classes
+name: rutgers-dwca-classes
+description: Rutgers ROWLRS data mapped to Darwin Core Archive structure
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  dwc: http://rs.tdwg.org/dwc/terms/
+  rutgers: https://rowlrs-data.marine.rutgers.edu/erddap/
+
+default_prefix: rutgers
+
+# ============================================
+# Classes representing DwC-A structure
+# ============================================
+
+classes:
+  
+  EventCore:
+    description: Darwin Core Event Core table - represents sampling events (tows/hauls)
+    slots:
+      # Identifiers
+      - event_id
+      - parent_event_id
+      - location_id
+      
+      # Temporal
+      - event_date
+      - year
+      - month
+      - day
+      
+      # Location
+      - decimal_latitude
+      - decimal_longitude
+      - minimum_depth_in_meters
+      - maximum_depth_in_meters
+      - footprint_wkt
+      - water_body
+      
+      # Sampling
+      - sampling_protocol
+      - sampling_effort
+      - sample_size_value
+      - sample_size_unit
+      - event_remarks
+    
+    slot_usage:
+      event_id:
+        description: "Constructed from cruise_id and station_id"
+        annotations:
+          rutgers_source: "cruise_id, station_id"
+      event_date:
+        description: "Constructed from year, month, day, or from time_date_utc"
+        annotations:
+          rutgers_source: "time_date_utc OR year + month + day"
+      decimal_latitude:
+        description: "Calculated from latitude and end_latitude (midpoint or start)"
+        annotations:
+          rutgers_source: "latitude, end_latitude"
+      decimal_longitude:
+        description: "Calculated from longitude and end_longitude (midpoint or start)"
+        annotations:
+          rutgers_source: "longitude, end_longitude"
+      minimum_depth_in_meters:
+        description: "Minimum of depth_m and end_depth_m"
+        annotations:
+          rutgers_source: "depth_m, end_depth_m"
+      maximum_depth_in_meters:
+        description: "Maximum of depth_m and end_depth_m"
+        annotations:
+          rutgers_source: "depth_m, end_depth_m"
+      footprint_wkt:
+        description: "LINESTRING constructed from start/end lat/lon"
+        annotations:
+          rutgers_source: "latitude, longitude, end_latitude, end_longitude"
+      water_body:
+        annotations:
+          rutgers_source: "survey_area"
+      sampling_protocol:
+        annotations:
+          rutgers_source: "sample_type"
+      sampling_effort:
+        annotations:
+          rutgers_source: "effort_time_minutes"
+      sample_size_value:
+        annotations:
+          rutgers_source: "tow_area_swept_m2"
+      sample_size_unit:
+        description: "Always 'square meters' for tow_area_swept_m2"
+      event_remarks:
+        annotations:
+          rutgers_source: "drift_number, trap_number"
+  
+  OccurrenceExtension:
+    description: Darwin Core Occurrence Extension - represents species observations
+    slots:
+      # Links to Event
+      - event_id
+      - occurrence_id
+      
+      # Taxonomic
+      - taxon_id
+      - scientific_name
+      - vernacular_name
+      
+      # Abundance
+      - individual_count
+      - organism_quantity
+      - organism_quantity_type
+      
+      # Metadata
+      - occurrence_status
+      - occurrence_remarks
+    
+    slot_usage:
+      event_id:
+        description: "Links to EventCore; from cruise_id and station_id"
+        annotations:
+          rutgers_source: "cruise_id, station_id"
+      occurrence_id:
+        description: "Unique identifier for each occurrence record"
+        annotations:
+          rutgers_source: "Generated from event_id + species_id OR clam_id for individuals"
+      taxon_id:
+        annotations:
+          rutgers_source: "species_id"
+      scientific_name:
+        annotations:
+          rutgers_source: "species_scientific_name"
+      vernacular_name:
+        annotations:
+          rutgers_source: "species_common_name"
+      individual_count:
+        annotations:
+          rutgers_source: "total_count OR clam_catch_abundance"
+      organism_quantity:
+        annotations:
+          rutgers_source: "total_weight_kg (when using weight)"
+      organism_quantity_type:
+        description: "E.g., 'weight in kg' or 'individuals'"
+      occurrence_status:
+        description: "Always 'present' for Rutgers data"
+      occurrence_remarks:
+        annotations:
+          rutgers_source: "size_class"
+  
+  ExtendedMeasurementOrFact:
+    description: Darwin Core Extended Measurement or Fact (eMoF) - represents measurements
+    slots:
+      # Links to Event or Occurrence
+      - event_id
+      - occurrence_id
+      
+      # Measurement details
+      - measurement_id
+      - measurement_type
+      - measurement_type_id
+      - measurement_value
+      - measurement_unit
+      - measurement_unit_id
+      - measurement_method
+      - measurement_remarks
+    
+    slot_usage:
+      event_id:
+        description: "Links to EventCore for event-level measurements"
+        annotations:
+          rutgers_source: "cruise_id, station_id (for environmental measurements)"
+      occurrence_id:
+        description: "Links to Occurrence for specimen-level measurements"
+        annotations:
+          rutgers_source: "occurrence_id (for individual measurements)"
+      measurement_type:
+        description: "Type of measurement, e.g., 'fork length', 'bottom temperature', 'mean length'"
+        annotations:
+          rutgers_source: "Derived from context: length_type determines type for length_mm"
+      measurement_type_id:
+        description: "URI for measurement type, e.g., P01 vocabulary term"
+        annotations:
+          rutgers_source: "Lookup from length_type to P01 term"
+      measurement_value:
+        annotations:
+          rutgers_source: "length_mm, mean_length_mm, std_length_mm, bottom_temperature_c, clam_catch_volume_bu, clam_catch_subsample_volume_bu"
+      measurement_unit:
+        description: "Unit of measurement, e.g., 'mm', 'degrees Celsius', 'bushels'"
+        annotations:
+          rutgers_source: "Inferred from field name (length_mm -> 'mm', temperature_c -> 'Celsius')"
+      measurement_unit_id:
+        description: "URI for unit, e.g., UCUM code"
+
+# ============================================
+# Slot Definitions
+# ============================================
+
+slots:
+  # Event Core slots
+  event_id:
+    slot_uri: dwc:eventID
+    range: string
+  
+  parent_event_id:
+    slot_uri: dwc:parentEventID
+    range: string
+  
+  location_id:
+    slot_uri: dwc:locationID
+    range: string
+  
+  event_date:
+    slot_uri: dwc:eventDate
+    range: string
+  
+  year:
+    slot_uri: dwc:year
+    range: integer
+  
+  month:
+    slot_uri: dwc:month
+    range: integer
+  
+  day:
+    slot_uri: dwc:day
+    range: integer
+  
+  decimal_latitude:
+    slot_uri: dwc:decimalLatitude
+    range: float
+  
+  decimal_longitude:
+    slot_uri: dwc:decimalLongitude
+    range: float
+  
+  minimum_depth_in_meters:
+    slot_uri: dwc:minimumDepthInMeters
+    range: float
+  
+  maximum_depth_in_meters:
+    slot_uri: dwc:maximumDepthInMeters
+    range: float
+  
+  footprint_wkt:
+    slot_uri: dwc:footprintWKT
+    range: string
+  
+  water_body:
+    slot_uri: dwc:waterBody
+    range: string
+  
+  sampling_protocol:
+    slot_uri: dwc:samplingProtocol
+    range: string
+  
+  sampling_effort:
+    slot_uri: dwc:samplingEffort
+    range: string
+  
+  sample_size_value:
+    slot_uri: dwc:sampleSizeValue
+    range: float
+  
+  sample_size_unit:
+    slot_uri: dwc:sampleSizeUnit
+    range: string
+  
+  event_remarks:
+    slot_uri: dwc:eventRemarks
+    range: string
+  
+  # Occurrence Extension slots
+  occurrence_id:
+    slot_uri: dwc:occurrenceID
+    range: string
+  
+  taxon_id:
+    slot_uri: dwc:taxonID
+    range: string
+  
+  scientific_name:
+    slot_uri: dwc:scientificName
+    range: string
+  
+  vernacular_name:
+    slot_uri: dwc:vernacularName
+    range: string
+  
+  individual_count:
+    slot_uri: dwc:individualCount
+    range: integer
+  
+  organism_quantity:
+    slot_uri: dwc:organismQuantity
+    range: string
+  
+  organism_quantity_type:
+    slot_uri: dwc:organismQuantityType
+    range: string
+  
+  occurrence_status:
+    slot_uri: dwc:occurrenceStatus
+    range: string
+  
+  occurrence_remarks:
+    slot_uri: dwc:occurrenceRemarks
+    range: string
+  
+  # eMoF slots
+  measurement_id:
+    slot_uri: dwc:measurementID
+    range: string
+  
+  measurement_type:
+    slot_uri: dwc:measurementType
+    range: string
+  
+  measurement_type_id:
+    slot_uri: dwc:measurementTypeID
+    range: uriorcurie
+  
+  measurement_value:
+    slot_uri: dwc:measurementValue
+    range: string
+  
+  measurement_unit:
+    slot_uri: dwc:measurementUnit
+    range: string
+  
+  measurement_unit_id:
+    slot_uri: dwc:measurementUnitID
+    range: uriorcurie
+  
+  measurement_method:
+    slot_uri: dwc:measurementMethod
+    range: string
+  
+  measurement_remarks:
+    slot_uri: dwc:measurementRemarks
+    range: string

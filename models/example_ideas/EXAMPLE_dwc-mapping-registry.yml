@@ -1,0 +1,161 @@
+id: https://example.org/dwc-mapping-registry
+name: dwc-mapping-registry
+description: Registry of mappings from source datasets to Darwin Core terms
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  dwc: http://rs.tdwg.org/dwc/terms/
+  nefsc_obis: https://example.org/nefsc_obis/terms/
+  fishglob: https://example.org/fishglob/terms/
+  rutgers: https://rowlrs-data.marine.rutgers.edu/erddap/
+  tricia: https://example.org/tricia/terms/
+  neamap: https://example.org/neamap/terms/
+  scallop: https://example.org/scallop/terms/
+  smast: https://example.org/smast/terms/
+
+default_prefix: mapping_registry
+
+classes:
+  DwCTermMappings:
+    description: All source mappings for a single Darwin Core term
+    attributes:
+      dwc_term:
+        description: The Darwin Core term URI
+        range: uriorcurie
+        required: true
+        identifier: true
+      dwc_term_label:
+        description: Human-readable label for the DwC term
+        range: string
+      source_mappings:
+        description: List of source dataset mappings to this DwC term
+        range: SourceMapping
+        multivalued: true
+        inlined_as_list: true
+  
+  SourceMapping:
+    description: A single source field mapping
+    attributes:
+      source_dataset:
+        description: Identifier for the source dataset
+        range: string
+        required: true
+      source_field:
+        description: Field name in the source dataset
+        range: string
+        required: true
+      source_field_uri:
+        description: URI for the source field
+        range: uriorcurie
+      mapping_type:
+        description: Type of mapping relationship
+        range: MappingTypeEnum
+        required: true
+      notes:
+        description: Additional notes about the mapping
+        range: string
+
+enums:
+  MappingTypeEnum:
+    permissible_values:
+      exact:
+      close:
+      broad:
+      narrow:
+      related:
+
+# ============================================
+# waterBody Mappings (instance data)
+# ============================================
+
+waterBody:
+  dwc_term: dwc:waterBody
+  dwc_term_label: "waterBody"
+  source_mappings:
+    - source_dataset: "nefsc_obis"
+      source_field: "waterBody"
+      source_field_uri: nefsc_obis:waterBody
+      mapping_type: exact
+      notes: "Already mapped to DwC in OBIS version"
+    
+    - source_dataset: "fishglob"
+      source_field: "source"
+      source_field_uri: fishglob:source
+      mapping_type: close
+      notes: "Survey source often corresponds to a specific water body region"
+    
+    - source_dataset: "rutgers_rowlrs"
+      source_field: "survey_area"
+      source_field_uri: rutgers:survey_area
+      mapping_type: exact
+      notes: "Geographic survey area designation"
+    
+    - source_dataset: "tricias_spreadsheet"
+      source_field: "survey_area"
+      source_field_uri: tricia:survey_area
+      mapping_type: exact
+      notes: "Geographic area of survey"
+    
+    - source_dataset: "neamap"
+      source_field: "area"
+      source_field_uri: neamap:area
+      mapping_type: close
+      notes: "May need to be more specific about which water body"
+    
+    - source_dataset: "scallop_survey"
+      source_field: "sub_area"
+      source_field_uri: scallop:sub_area
+      mapping_type: close
+      notes: "May need parent area context for full water body identification"
+    
+    - source_dataset: "smast"
+      source_field: "Project Area"
+      source_field_uri: smast:project_area
+      mapping_type: close
+      notes: "Project area relates to water body but may need interpretation"
+
+  scientificName:
+    dwc_term: dwc:scientificName
+    dwc_term_label: "scientificName"
+    source_mappings:
+      - source_dataset: "nefsc_obis"
+        source_field: "scientificName"
+        source_field_uri: nefsc_obis:scientificName
+        mapping_type: exact
+        notes: "Already mapped to DwC in OBIS version"
+      
+      - source_dataset: "fishglob"
+        source_field: "accepted_name"
+        source_field_uri: fishglob:accepted_name
+        mapping_type: exact
+        notes: "Taxonomically validated scientific name"
+      
+      - source_dataset: "rutgers_rowlrs"
+        source_field: "species_common_name"
+        source_field_uri: rutgers:species_common_name
+        mapping_type: related
+        notes: "OW1 only has common names; would need taxonomy lookup to get scientificName"
+      
+      - source_dataset: "tricias_spreadsheet"
+        source_field: "accepted_name"
+        source_field_uri: tricia:accepted_name
+        mapping_type: exact
+        notes: "Taxonomically validated scientific name"
+      
+      - source_dataset: "neamap"
+        source_field: "scientific_name"
+        source_field_uri: neamap:scientific_name
+        mapping_type: exact
+        notes: "Scientific name of species"
+      
+      - source_dataset: "scallop_survey"
+        source_field: "scientific_name"
+        source_field_uri: scallop:scientific_name
+        mapping_type: exact
+        notes: "Scientific name following taxonomic standards"
+      
+      - source_dataset: "smast"
+        source_field: "Species Scientific Name"
+        source_field_uri: smast:species_scientific_name
+        mapping_type: broad
+        notes: "May include species complexes or informal names not strictly compliant with nomenclatural codes"

@@ -1,0 +1,549 @@
+id: https://w3id.org/example/rowlrs/eml-ow1-publication
+name: eml-ow1-publication
+title: EML Publication Model for OW1 Dataset Metadata
+description: >-
+  Ecological Metadata Language (EML) structure defining how Rutgers OW1 Bottom Trawl Survey
+  dataset-level metadata should be published. This schema defines EML elements with mappings
+  back to source OW1 DatasetMetadata fields. Uses SKOS mapping predicates in reverse
+  (EML elements map to OW1 fields) to document both semantic relationships and publishing structure.
+
+see_also:
+  - https://eml.ecoinformatics.org/
+  - https://eml.ecoinformatics.org/schema/
+  - https://rowlrs-data.marine.rutgers.edu/erddap/info/bottom_trawl_survey_ow1_catch/index.json
+
+imports:
+  - linkml:types
+
+default_prefix: eml
+default_range: string
+
+prefixes:
+  linkml: https://w3id.org/linkml/
+  eml: https://eml.ecoinformatics.org/eml-2.2.0/
+  ow1_catch: https://w3id.org/example/rowlrs/ow1-catch/
+  skos: http://www.w3.org/2004/02/skos/core#
+
+comments:
+  - "NOTE: URIs use https://w3id.org/example/ as a placeholder namespace. Replace with registered namespace before production use."
+  - "This schema defines the TARGET structure for EML publication, with mappings showing which OW1 source fields populate each EML element"
+
+classes:
+  EMLDocument:
+    description: >-
+      Root container for an EML metadata document describing the OW1 dataset.
+    tree_root: true
+    slots:
+      - package_id
+      - system
+      - dataset
+      
+  Dataset:
+    description: >-
+      The dataset element contains all information about a single dataset.
+      This is the main container for dataset-level metadata.
+    slots:
+      - title
+      - creator
+      - contact
+      - publisher
+      - project
+      - abstract
+      - keywords
+      - intellectualRights
+      - distribution
+      - coverage
+      - methods
+      
+  ResponsibleParty:
+    description: >-
+      Information about a person or organization responsible for the dataset.
+      Used for creator, contact, and associatedParty roles.
+    slots:
+      - individual_name
+      - organization_name
+      - position_name
+      - address
+      - phone
+      - electronic_mail_address
+      - online_url
+      - role
+      
+  Project:
+    description: >-
+      Information about the research project that produced the dataset.
+    slots:
+      - title
+      - personnel
+      - abstract
+      - funding
+      
+  Coverage:
+    description: >-
+      Information about the geographic, temporal, and taxonomic coverage of the dataset.
+    slots:
+      - geographic_coverage
+      - temporal_coverage
+      - taxonomic_coverage
+      
+  GeographicCoverage:
+    description: >-
+      Geographic area(s) covered by the dataset.
+    slots:
+      - geographic_description
+      - bounding_coordinates
+      
+  BoundingCoordinates:
+    description: >-
+      Geographic bounding box defined by coordinates.
+    slots:
+      - west_bounding_coordinate
+      - east_bounding_coordinate
+      - north_bounding_coordinate
+      - south_bounding_coordinate
+      
+  TaxonomicCoverage:
+    description: >-
+      General taxonomic scope of the dataset, describing the major taxonomic groups covered.
+    slots:
+      - general_taxonomic_coverage
+      
+  Methods:
+    description: >-
+      Information about the methods used to collect or process the data.
+    slots:
+      - method_step
+      - sampling
+      - quality_control
+      
+  Distribution:
+    description: >-
+      Information about how the dataset is distributed or accessed.
+    slots:
+      - online
+      
+  Online:
+    description: >-
+      Information about online access to the dataset.
+    slots:
+      - online_url
+      - online_description
+
+slots:
+  # EMLDocument slots
+  package_id:
+    description: >-
+      Unique identifier for this EML package.
+    range: string
+    required: true
+    slot_uri: eml:packageId
+    exact_mappings:
+      - ow1_catch:dataset_id
+    comments:
+      - "Use OW1 dataset_id as EML packageId"
+      
+  system:
+    description: >-
+      The data management system within which the identifier is unique.
+    range: string
+    slot_uri: eml:system
+    comments:
+      - "Could be 'https://rowlrs-data.marine.rutgers.edu/erddap' or similar"
+      
+  dataset:
+    description: Dataset metadata container
+    range: Dataset
+    required: true
+    inlined: true
+    
+  # Dataset slots
+  title:
+    description: >-
+      The title of the dataset.
+    range: string
+    required: true
+    slot_uri: eml:title
+    exact_mappings:
+      - ow1_catch:dataset_title
+    comments:
+      - "Direct mapping from dataset_title"
+      
+  creator:
+    description: >-
+      The person(s) or organization(s) responsible for creating the dataset.
+    range: ResponsibleParty
+    multivalued: true
+    required: true
+    inlined: true
+    slot_uri: eml:creator
+    exact_mappings:
+      - ow1_catch:creator_name
+      - ow1_catch:creator_institution
+      - ow1_catch:creator_email
+      - ow1_catch:creator_url
+    comments:
+      - "Construct from creator_name, creator_institution, creator_email, creator_url"
+      - "creator_type indicates if this is an individual or organization"
+      
+  contact:
+    description: >-
+      The person(s) or organization(s) to contact for more information about the dataset.
+    range: ResponsibleParty
+    multivalued: true
+    required: true
+    inlined: true
+    slot_uri: eml:contact
+    comments:
+      - "Can use same information as creator, or construct from publisher fields"
+      
+  publisher:
+    description: >-
+      The person or organization responsible for publishing the dataset.
+    range: ResponsibleParty
+    inlined: true
+    slot_uri: eml:publisher
+    exact_mappings:
+      - ow1_catch:publisher_name
+      - ow1_catch:publisher_institution
+      - ow1_catch:publisher_email
+    comments:
+      - "Construct from publisher_name, publisher_institution, publisher_email"
+      - "publisher_type indicates if this is an individual or organization"
+      
+  project:
+    description: >-
+      Information about the research project.
+    range: Project
+    inlined: true
+    slot_uri: eml:project
+    exact_mappings:
+      - ow1_catch:program
+      - ow1_catch:project
+    comments:
+      - "Use program and project fields to construct EML project element"
+      
+  abstract:
+    description: >-
+      A brief overview of the dataset.
+    range: string
+    slot_uri: eml:abstract
+    exact_mappings:
+      - ow1_catch:summary
+    comments:
+      - "Direct mapping from summary field"
+      
+  keywords:
+    description: >-
+      Keywords describing the dataset content.
+    range: string
+    multivalued: true
+    slot_uri: eml:keyword
+    exact_mappings:
+      - ow1_catch:keywords
+    comments:
+      - "Parse comma-separated keywords string into list"
+      
+  intellectualRights:
+    description: >-
+      Information about intellectual property rights and usage restrictions.
+    range: string
+    slot_uri: eml:intellectualRights
+    exact_mappings:
+      - ow1_catch:license
+    comments:
+      - "Direct mapping from license field"
+      
+  distribution:
+    description: >-
+      Information about how to access the dataset.
+    range: Distribution
+    multivalued: true
+    inlined: true
+    slot_uri: eml:distribution
+    exact_mappings:
+      - ow1_catch:info_url
+      - ow1_catch:source_url
+    comments:
+      - "Create distribution/online elements from info_url and source_url"
+      
+  coverage:
+    description: >-
+      Geographic, temporal, and taxonomic coverage information.
+    range: Coverage
+    inlined: true
+    slot_uri: eml:coverage
+    exact_mappings:
+      - ow1_catch:geospatial_bounds_crs
+      - ow1_catch:geospatial_vertical_positive
+    comments:
+      - "Construct from geospatial metadata"
+      - "Requires additional data (coordinates, dates) from station/tow tables"
+      
+  methods:
+    description: >-
+      Methods used to collect and process the data.
+    range: Methods
+    inlined: true
+    slot_uri: eml:methods
+    exact_mappings:
+      - ow1_catch:comment
+    comments:
+      - "Include information from comment field about survey methods"
+      - "Document sampling protocol: bottom trawl, 3 knots, 20 minutes"
+      
+  # ResponsibleParty slots
+  individual_name:
+    description: >-
+      Name of the individual.
+    range: string
+    slot_uri: eml:individualName
+    
+  organization_name:
+    description: >-
+      Name of the organization.
+    range: string
+    slot_uri: eml:organizationName
+    
+  position_name:
+    description: >-
+      Position or title of the person.
+    range: string
+    slot_uri: eml:positionName
+    
+  address:
+    description: >-
+      Physical mailing address.
+    range: string
+    slot_uri: eml:address
+    
+  phone:
+    description: >-
+      Telephone number.
+    range: string
+    slot_uri: eml:phone
+    
+  electronic_mail_address:
+    description: >-
+      Email address.
+    range: string
+    slot_uri: eml:electronicMailAddress
+    
+  online_url:
+    description: >-
+      URL for more information.
+    range: string
+    slot_uri: eml:onlineUrl
+    
+  role:
+    description: >-
+      Role of this person or organization.
+    range: string
+    slot_uri: eml:role
+    exact_mappings:
+      - ow1_catch:contributor_role
+    comments:
+      - "Map from contributors list with roles"
+      
+  # Project slots
+  personnel:
+    description: >-
+      People involved in the project.
+    range: ResponsibleParty
+    multivalued: true
+    inlined: true
+    slot_uri: eml:personnel
+    exact_mappings:
+      - ow1_catch:contributors
+    comments:
+      - "Map from contributors list"
+      - "Each Contributor becomes a personnel entry with name and role"
+      
+  funding:
+    description: >-
+      Funding sources for the project.
+    range: string
+    slot_uri: eml:funding
+    exact_mappings:
+      - ow1_catch:acknowledgement
+    comments:
+      - "Direct mapping from acknowledgement field"
+      
+  # Coverage slots
+  geographic_coverage:
+    description: >-
+      Geographic area covered by the dataset.
+    range: GeographicCoverage
+    inlined: true
+    slot_uri: eml:geographicCoverage
+    
+  temporal_coverage:
+    description: >-
+      Time period covered by the dataset.
+    range: string
+    slot_uri: eml:temporalCoverage
+    comments:
+      - "Requires temporal extent data from station/tow tables"
+      - "Not available in catch dataset alone"
+      
+  taxonomic_coverage:
+    description: >-
+      Taxonomic groups covered by the dataset.
+    range: TaxonomicCoverage
+    inlined: true
+    slot_uri: eml:taxonomicCoverage
+    exact_mappings:
+      - ow1_catch:species_common_name
+      - ow1_catch:species_scientific_name_lookup
+      - ow1_catch:itis_tsn
+    comments:
+      - "Aggregate unique species from all CatchRecords"
+      - "Enrich with SpeciesCode lookup for scientific names and ITIS TSNs"
+      - "Generate taxonomic hierarchy for each observed species"
+      
+  geographic_description:
+    description: >-
+      Textual description of the geographic area.
+    range: string
+    slot_uri: eml:geographicDescription
+    comments:
+      - "Describe survey area: OW1 Wind Farm lease area and control sites"
+      
+  bounding_coordinates:
+    description: >-
+      Geographic bounding box.
+    range: BoundingCoordinates
+    inlined: true
+    slot_uri: eml:boundingCoordinates
+    comments:
+      - "Requires coordinate data from station/tow tables"
+      
+  west_bounding_coordinate:
+    description: Western longitude boundary
+    range: float
+    slot_uri: eml:westBoundingCoordinate
+    
+  east_bounding_coordinate:
+    description: Eastern longitude boundary
+    range: float
+    slot_uri: eml:eastBoundingCoordinate
+    
+  north_bounding_coordinate:
+    description: Northern latitude boundary
+    range: float
+    slot_uri: eml:northBoundingCoordinate
+    
+  south_bounding_coordinate:
+    description: Southern latitude boundary
+    range: float
+    slot_uri: eml:southBoundingCoordinate
+    
+  # TaxonomicCoverage slots
+  general_taxonomic_coverage:
+    description: >-
+      General description of the taxonomic groups covered by the dataset.
+    range: string
+    slot_uri: eml:generalTaxonomicCoverage
+    comments:
+      - "Example: 'Bottom-dwelling fish and invertebrates from the Mid-Atlantic Bight'"
+      - "Derived from dataset summary and observed taxa"
+      
+  taxonomic_classification:
+    description: >-
+      List of taxonomic classifications for all taxa in the dataset.
+    range: TaxonomicClassification
+    multivalued: true
+    inlined: true
+    slot_uri: eml:taxonomicClassification
+    comments:
+      - "One classification per unique species observed"
+      - "Built from aggregated CatchRecord species + SpeciesCode enrichment"
+      
+  taxon_rank_name:
+    description: >-
+      The name of the taxonomic rank (e.g., Kingdom, Phylum, Class, Order, Family, Genus, Species).
+    range: string
+    slot_uri: eml:taxonRankName
+    comments:
+      - "EML supports hierarchical taxonomic classification"
+      - "Derive full hierarchy from ITIS using SpeciesCode.itis_tsn"
+      
+  taxon_rank_value:
+    description: >-
+      The value for the taxonomic rank (e.g., 'Animalia', 'Chordata', 'Actinopterygii').
+    range: string
+    required: true
+    slot_uri: eml:taxonRankValue
+    exact_mappings:
+      - ow1_catch:species_scientific_name_lookup
+    comments:
+      - "For species-level: use SpeciesCode.species_scientific_name_lookup"
+      - "For higher ranks: derive from ITIS hierarchy"
+      
+  common_name:
+    description: >-
+      Common name(s) for the taxon.
+    range: string
+    multivalued: true
+    slot_uri: eml:commonName
+    exact_mappings:
+      - ow1_catch:species_common_name
+    comments:
+      - "Use CatchRecord.species_common_name"
+      - "Can also use SpeciesCode.species_common_name_lookup for standardized names"
+      
+  taxonomic_id:
+    description: >-
+      An identifier from a taxonomic authority (e.g., ITIS TSN).
+    range: string
+    slot_uri: eml:taxonomicId
+    exact_mappings:
+      - ow1_catch:itis_tsn
+    comments:
+      - "Use SpeciesCode.itis_tsn"
+      - "Format as ITIS TSN or convert to LSID: urn:lsid:itis.gov:itis_tsn:XXXXXX"
+  
+  # Methods slots
+  method_step:
+    description: >-
+      Description of a method or protocol used.
+    range: string
+    multivalued: true
+    slot_uri: eml:methodStep
+    exact_mappings:
+      - ow1_catch:comment
+    comments:
+      - "Document sampling methodology from comment field"
+      - "Include details about vessel, gear, protocols"
+      
+  sampling:
+    description: >-
+      Information about sampling procedures.
+    range: string
+    slot_uri: eml:sampling
+    comments:
+      - "Describe: 20 tows in lease area, 20 in control area per season"
+      - "Document trawl specifications and duration"
+      
+  quality_control:
+    description: >-
+      Quality control procedures applied.
+    range: string
+    slot_uri: eml:qualityControl
+    comments:
+      - "Document QA/QC procedures if available"
+      
+  # Distribution slots
+  online:
+    description: >-
+      Online access information.
+    range: Online
+    inlined: true
+    slot_uri: eml:online
+    
+  online_description:
+    description: >-
+      Description of the online resource.
+    range: string
+    slot_uri: eml:onlineDescription
+    comments:
+      - "Describe ERDDAP access or other distribution methods"
