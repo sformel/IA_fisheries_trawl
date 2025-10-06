@@ -109,10 +109,14 @@ class DwCTransformer:
         return f"{cruise}:{station}"
     
     @staticmethod
-    def create_occurrence_id(cruise: str, station: str, species: str) -> str:
-        """Generate DwC occurrenceID."""
+    def create_occurrence_id(cruise: str, station: str, species: str, size_class: str = None) -> str:
+        """Generate DwC occurrenceID, including size_class if present."""
         species_code = str(species).replace(' ', '_').replace('/', '_')
-        return f"{cruise}:{station}:{species_code}"
+        base_id = f"{cruise}:{station}:{species_code}"
+        if size_class and pd.notna(size_class) and str(size_class).strip():
+            size_code = str(size_class).replace(' ', '_').upper()
+            return f"{base_id}:{size_code}"
+        return base_id
     
     @staticmethod
     def format_itis_lsid(itis_tsn) -> str:
@@ -122,33 +126,76 @@ class DwCTransformer:
         return f"urn:lsid:itis.gov:itis_tsn:{int(itis_tsn)}"
     
     def transform_to_event(self, tow_df: pd.DataFrame) -> pd.DataFrame:
-        """Transform TowRecords to DwC Event core."""
+        """
+        Transform TowRecords to DwC Event core.
+        Creates TWO types of events: cruise-level parents and tow-level children.
+        """
         events = []
         
+        # 1. Create cruise-level parent events
+        cruises = tow_df.groupby('cruise').agg({
+            'time': 'min',  # Use earliest tow time for cruise
+        }).reset_index()
+        
+        for _, cruise_row in cruises.iterrows():
+            cruise_event = {
+                'eventID': cruise_row['cruise'],
+                'parentEventID': None,
+                'eventType': 'cruise',
+                'datasetID': 'bottom_trawl_survey_ow1_tows',
+                'eventDate': cruise_row['time'],
+                'locationID': None,
+                'decimalLatitude': None,
+                'decimalLongitude': None,
+                'geodeticDatum': 'EPSG:4326',
+                'footprintWKT': None,  # Could aggregate all tow lines if desired
+                'footprintSRS': 'EPSG:4326',
+                'coordinateUncertaintyInMeters': None,
+                'minimumDepthInMeters': None,
+                'maximumDepthInMeters': None,
+                'waterBody': None,
+                'samplingProtocol': 'Bottom otter trawl',
+                'samplingEffort': None,
+                'sampleSizeValue': None,
+                'sampleSizeUnit': None,
+                'eventRemarks': 'Survey cruise - parent event for multiple tows'
+            }
+            events.append(cruise_event)
+        
+        # 2. Create tow-level child events
         for _, row in tow_df.iterrows():
             # Calculate midpoint coordinates
-            # ERDDAP columns: latitude (start), longitude (start), end_latitude, end_longitude
             mid_lat, mid_lon = self.calculate_midpoint(
                 row['latitude'], row['longitude'],
                 row['end_latitude'], row['end_longitude']
             )
             
-            event = {
+            # Create WKT LINESTRING for tow track
+            footprint_wkt = f"LINESTRING ({row['longitude']} {row['latitude']}, {row['end_longitude']} {row['end_latitude']})"
+            
+            tow_event = {
                 'eventID': self.create_event_id(row['cruise'], row['station']),
                 'parentEventID': row['cruise'],
-                'eventDate': row['time'],  # Already in ISO 8601 format,
+                'eventType': 'tow',
+                'datasetID': 'bottom_trawl_survey_ow1_tows',
+                'eventDate': row['time'],
+                'locationID': row['station'],
                 'decimalLatitude': round(mid_lat, 6),
                 'decimalLongitude': round(mid_lon, 6),
                 'geodeticDatum': 'EPSG:4326',
+                'footprintWKT': footprint_wkt,
+                'footprintSRS': 'EPSG:4326',
                 'coordinateUncertaintyInMeters': None,
                 'minimumDepthInMeters': row.get('depth_min'),
                 'maximumDepthInMeters': row.get('depth_max'),
+                'waterBody': None,
                 'samplingProtocol': 'Bottom otter trawl',
-                'sampleSizeValue': row.get('tow_duration_minutes'),
+                'samplingEffort': '20 minutes at 3 knots (~1 nautical mile)',
+                'sampleSizeValue': 20,
                 'sampleSizeUnit': 'minutes',
-                'eventRemarks': f"Start: {row['latitude']:.4f},{row['longitude']:.4f}; End: {row['end_latitude']:.4f},{row['end_longitude']:.4f}"
+                'eventRemarks': f"Tow from {row['latitude']:.4f},{row['longitude']:.4f} to {row['end_latitude']:.4f},{row['end_longitude']:.4f}"
             }
-            events.append(event)
+            events.append(tow_event)
         
         return pd.DataFrame(events)
     
@@ -157,7 +204,6 @@ class DwCTransformer:
         """Transform CatchRecords to DwC Occurrence extension."""
         
         # Join with species lookup on species_common_name
-        # ERDDAP columns: species_common_name, species_scientific_name, ITIS_tsn
         merged = catch_df.merge(
             species_df,
             on='species_common_name',
@@ -167,9 +213,14 @@ class DwCTransformer:
         occurrences = []
         
         for _, row in merged.iterrows():
+            # Build occurrence remarks with size class if present
+            remarks = None
+            if pd.notna(row.get('size_class')) and str(row['size_class']).strip():
+                remarks = f"Size class: {row['size_class']}"
+            
             occurrence = {
                 'occurrenceID': self.create_occurrence_id(
-                    row['cruise'], row['station'], row['species_common_name']
+                    row['cruise'], row['station'], row['species_common_name'], row.get('size_class')
                 ),
                 'eventID': self.create_event_id(row['cruise'], row['station']),
                 'basisOfRecord': 'HumanObservation',
@@ -180,9 +231,9 @@ class DwCTransformer:
                 'taxonRank': 'species',
                 'kingdom': 'Animalia',
                 'individualCount': int(row['total_count']) if pd.notna(row['total_count']) else None,
-                'organismQuantity': row['total_weight'] if pd.notna(row['total_weight']) else None,
-                'organismQuantityType': 'biomass in kg' if pd.notna(row['total_weight']) else None,
-                'occurrenceRemarks': None
+                'organismQuantity': None,
+                'organismQuantityType': None,
+                'occurrenceRemarks': remarks
             }
             occurrences.append(occurrence)
         
@@ -194,26 +245,44 @@ class DwCTransformer:
         
         for _, row in catch_df.iterrows():
             occurrence_id = self.create_occurrence_id(
-                row['cruise'], row['station'], row['species_common_name']
+                row['cruise'], row['station'], row['species_common_name'], row.get('size_class')
             )
             event_id = self.create_event_id(row['cruise'], row['station'])
+            
+            # Size class as a measurement (if present)
+            if pd.notna(row.get('size_class')) and str(row['size_class']).strip():
+                emof_records.append({
+                    'measurementID': f"{occurrence_id}_size_class",
+                    'occurrenceID': occurrence_id,
+                    'eventID': event_id,
+                    'measurementType': 'size class',
+                    'measurementValue': str(row['size_class']),
+                    'measurementUnit': None,
+                    'measurementTypeID': None,  # TODO: add controlled vocab URI if available
+                    'measurementValueID': None,
+                    'measurementAccuracy': None,
+                    'measurementDeterminedDate': None,
+                    'measurementDeterminedBy': None,
+                    'measurementMethod': 'Visual assessment during sorting',
+                    'measurementRemarks': 'Categorical size class designation'
+                })
             
             # Total weight
             if pd.notna(row.get('total_weight')):
                 emof_records.append({
-                    'measurementID': f"{occurrence_id}_weight",  # ADD THIS
+                    'measurementID': f"{occurrence_id}_weight",
                     'occurrenceID': occurrence_id,
                     'eventID': event_id,
                     'measurementType': 'total biomass',
                     'measurementValue': row['total_weight'],
                     'measurementUnit': 'kg',
                     'measurementTypeID': 'http://vocab.nerc.ac.uk/collection/P01/current/OWETXX01/',
-                    'measurementValueID': None,  # ADD THIS
-                    'measurementAccuracy': None,  # ADD THIS
-                    'measurementDeterminedDate': None,  # ADD THIS
-                    'measurementDeterminedBy': None,  # ADD THIS
+                    'measurementValueID': None,
+                    'measurementAccuracy': None,
+                    'measurementDeterminedDate': None,
+                    'measurementDeterminedBy': None,
                     'measurementMethod': 'Bottom otter trawl',
-                    'measurementRemarks': None  # ADD THIS
+                    'measurementRemarks': None
                 })
             
             # Total count
@@ -272,7 +341,26 @@ class DwCTransformer:
                     'measurementRemarks': f'Length type: {length_type}'
                 })
         
-        return pd.DataFrame(emof_records)
+        df = pd.DataFrame(emof_records)
+        
+        # Reorder columns - coreid (occurrenceID) MUST be first
+        column_order = [
+            'eventID',
+            'occurrenceID',
+            'measurementID',
+            'measurementType',
+            'measurementValue',
+            'measurementUnit',
+            'measurementTypeID',
+            'measurementValueID',
+            'measurementAccuracy',
+            'measurementDeterminedDate',
+            'measurementDeterminedBy',
+            'measurementMethod',
+            'measurementRemarks'
+        ]
+        
+        return df[column_order]
 
 
 # ============================================================================
@@ -297,7 +385,7 @@ class DwCArchiveWriter:
         meta_xml = """<?xml version="1.0" encoding="UTF-8"?>
 <archive xmlns="http://rs.tdwg.org/dwc/text/" metadata="eml.xml">
   <core encoding="UTF-8" fieldsTerminatedBy="\\t" linesTerminatedBy="\\n" 
-        fieldsEnclosedBy="" ignoreHeaderLines="1" rowType="http://rs.tdwg.org/dwc/terms/Event">
+        ignoreHeaderLines="1" rowType="http://rs.tdwg.org/dwc/terms/Event">
     <files>
       <location>event.txt</location>
     </files>
@@ -315,17 +403,24 @@ class DwCArchiveWriter:
     <field index="10" term="http://rs.tdwg.org/dwc/terms/sampleSizeValue"/>
     <field index="11" term="http://rs.tdwg.org/dwc/terms/sampleSizeUnit"/>
     <field index="12" term="http://rs.tdwg.org/dwc/terms/eventRemarks"/>
+    <field index="13" term="http://rs.tdwg.org/dwc/terms/eventType"/>
+    <field index="14" term="http://rs.tdwg.org/dwc/terms/datasetID"/>
+    <field index="15" term="http://rs.tdwg.org/dwc/terms/locationID"/>
+    <field index="16" term="http://rs.tdwg.org/dwc/terms/waterBody"/>
+    <field index="17" term="http://rs.tdwg.org/dwc/terms/footprintWKT"/>
+    <field index="18" term="http://rs.tdwg.org/dwc/terms/footprintSRS"/>
+    <field index="19" term="http://rs.tdwg.org/dwc/terms/samplingEffort"/>
   </core>
   
   <extension encoding="UTF-8" fieldsTerminatedBy="\\t" linesTerminatedBy="\\n" 
-            fieldsEnclosedBy="" ignoreHeaderLines="1" 
+            ignoreHeaderLines="1" 
             rowType="http://rs.tdwg.org/dwc/terms/Occurrence">
     <files>
       <location>occurrence.txt</location>
     </files>
-    <coreid index="1"/>
-    <field index="0" term="http://rs.tdwg.org/dwc/terms/occurrenceID"/>
-    <field index="1" term="http://rs.tdwg.org/dwc/terms/eventID"/>
+    <coreid index="0"/>
+    <field index="0" term="http://rs.tdwg.org/dwc/terms/eventID"/>
+    <field index="1" term="http://rs.tdwg.org/dwc/terms/occurrenceID"/>
     <field index="2" term="http://rs.tdwg.org/dwc/terms/basisOfRecord"/>
     <field index="3" term="http://rs.tdwg.org/dwc/terms/occurrenceStatus"/>
     <field index="4" term="http://rs.tdwg.org/dwc/terms/vernacularName"/>
@@ -339,16 +434,16 @@ class DwCArchiveWriter:
     <field index="12" term="http://rs.tdwg.org/dwc/terms/occurrenceRemarks"/>
   </extension>
   
-  <extension encoding="UTF-8" fieldsTerminatedBy="\t" linesTerminatedBy="\n" 
-            fieldsEnclosedBy="" ignoreHeaderLines="1" 
+  <extension encoding="UTF-8" fieldsTerminatedBy="\\t" linesTerminatedBy="\\n" 
+            ignoreHeaderLines="1" 
             rowType="http://rs.iobis.org/obis/terms/ExtendedMeasurementOrFact">
     <files>
         <location>extendedmeasurementorfact.txt</location>
     </files>
-    <coreid index="1"/>
-    <field index="0" term="http://rs.tdwg.org/dwc/terms/measurementID"/>
+    <coreid index="0"/>
+    <field index="0" term="http://rs.tdwg.org/dwc/terms/eventID"/>
     <field index="1" term="http://rs.tdwg.org/dwc/terms/occurrenceID"/>
-    <field index="2" term="http://rs.tdwg.org/dwc/terms/eventID"/>
+    <field index="2" term="http://rs.tdwg.org/dwc/terms/measurementID"/>
     <field index="3" term="http://rs.tdwg.org/dwc/terms/measurementType"/>
     <field index="4" term="http://rs.tdwg.org/dwc/terms/measurementValue"/>
     <field index="5" term="http://rs.tdwg.org/dwc/terms/measurementUnit"/>
@@ -376,6 +471,8 @@ class DwCArchiveWriter:
                 zipf.write(self.output_dir / file, arcname=file)
         
         print(f"\nCreated Darwin Core Archive: {archive_path}")
+
+        import shutil; shutil.rmtree(OUTPUT_DIR)
         return archive_path
 
 

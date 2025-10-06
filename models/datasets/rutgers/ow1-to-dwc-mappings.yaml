@@ -39,16 +39,18 @@ classes:
     slots:
       - events
       - occurrences
-      - measurements_or_facts
+      - extended_measurements_or_facts
     
   Event:
     description: >-
-      Event core records representing sampling events (trawl tows/stations) in the OW1 survey.
-      Each event represents a discrete trawl tow at a specific location and time.
+      Event core records representing sampling events in the OW1 survey.
+      Hierarchical structure: cruise (parent) → tow (child).
     comments:
-      - "One Event record per TowRecord (station/tow)"
-      - "Populated primarily from TowRecord class"
-      - "cruise serves as parentEventID, cruise+station combination as eventID"
+      - "TWO levels of events: cruise-level parents and tow-level children"
+      - "Cruise events: one per cruise, eventType='cruise', no parentEventID"
+      - "Tow events: one per station/tow, eventType='tow', parentEventID=cruise"
+      - "Occurrences link to tow events via eventID"
+      - "Tow geometry captured as LINESTRING in footprintWKT"
     slots:
       - eventID
       - parentEventID
@@ -83,13 +85,14 @@ classes:
       - organismQuantityType
       - occurrenceRemarks
       
-  MeasurementOrFact:
+  ExtendedMeasurementOrFact:
     description: >-
       ExtendedMeasurementOrFact (eMoF) extension records for measurements and observations.
-      Used for length measurements, weights, and other quantitative data.
+      Used for length measurements, weights, counts, and size class designations.
     comments:
       - "Multiple eMoF records generated per CatchRecord for different measurement types"
       - "Links to Occurrence via occurrenceID or Event via eventID"
+      - "Size class designation included as a separate measurement type when present"
     slots:
       - measurementID
       - occurrenceID
@@ -113,9 +116,9 @@ slots:
     multivalued: true
     inlined: true
     
-  measurements_or_facts:
-    description: List of MeasurementOrFact extension records
-    range: MeasurementOrFact
+  extended_measurements_or_facts:
+    description: List of ExtendedMeasurementOrFact extension records
+    range: ExtendedMeasurementOrFact
     multivalued: true
     inlined: true
 
@@ -165,9 +168,9 @@ slots:
     range: string
     slot_uri: dwc:locationID
     exact_mappings:
-      - ow1_catch:tow_station
+      - ow1_catch:station
     comments:
-      - "TowRecord.tow_station serves as locationID"
+      - "Direct mapping from TowRecord.station"
       
   decimalLatitude:
     description: >-
@@ -254,6 +257,61 @@ slots:
     slot_uri: dwc:sampleSizeUnit
     comments:
       - "If using tow duration: 'minutes'"
+
+  datasetID:
+    description: >-
+      An identifier for the set of data. May be a global unique identifier or an identifier specific to a collection or institution.
+    range: string
+    slot_uri: dwc:datasetID
+    exact_mappings:
+      - ow1_catch:dataset_id
+    comments:
+      - "Direct mapping from DatasetMetadata.dataset_id"
+      - "Use 'bottom_trawl_survey_ow1_tows' or 'bottom_trawl_survey_ow1_catch' as appropriate"
+  
+  eventType:
+    description: >-
+      The nature of the Event. Recommended to use a controlled vocabulary.
+    range: string
+    slot_uri: dwc:eventType
+    comments:
+      - "Use 'cruise' for cruise-level parent events"
+      - "Use 'tow' for individual trawl tow events"
+      - "Occurrences link to tow events, not separate catch events"
+  
+  samplingEffort:
+    description: >-
+      The amount of effort expended during an Event.
+    range: string
+    slot_uri: dwc:samplingEffort
+    comments:
+      - "For tows: '20 minutes at 3 knots (~1 nautical mile)'"
+      - "Derived from dataset summary metadata"
+      - "Can be calculated from tow duration and speed if per-tow data available"
+  
+  footprintWKT:
+    description: >-
+      A Well-Known Text (WKT) representation of the shape that defines the location of the Event.
+    range: string
+    slot_uri: dwc:footprintWKT
+    related_mappings:
+      - ow1_catch:latitude
+      - ow1_catch:longitude
+      - ow1_catch:end_latitude
+      - ow1_catch:end_longitude
+    comments:
+      - "For cruise events: bounding box or multilinestring of all tows"
+      - "For tow events: LINESTRING from start to end coordinates"
+      - "Format: 'LINESTRING (start_lon start_lat, end_lon end_lat)'"
+      - "Example: 'LINESTRING (-74.2 39.5, -74.18 39.52)'"
+  
+  footprintSRS:
+    description: >-
+      The spatial reference system (SRS) upon which the geometry given in footprintWKT is based.
+    range: string
+    slot_uri: dwc:footprintSRS
+    comments:
+      - "Set to 'EPSG:4326' (WGS84)"
 
   # Occurrence extension terms
   occurrenceID:
@@ -429,3 +487,22 @@ slots:
     comments:
       - "Document length measurement type (FL, TL, DW, CW, ML, SW, SH)"
       - "Include any relevant context from size_class"
+
+  # Size class as measurement
+  size_class_measurement:
+    description: >-
+      Size class designation as a measurement type in eMoF.
+      When CatchRecord.size_class is present, create an eMoF record with measurementType='size class'.
+    annotations:
+      transformation_notes: >-
+        For each CatchRecord with size_class populated:
+        - measurementType = 'size class'
+        - measurementValue = CatchRecord.size_class (e.g., 'SMALL', 'LARGE', 'MEDIUM')
+        - measurementUnit = null (categorical value)
+        - measurementTypeID = [needs controlled vocabulary URI]
+    related_mappings:
+      - ow1_catch:size_class
+    comments:
+      - "Size class is a categorical variable, not a numeric measurement"
+      - "Examples: 'SMALL', 'MEDIUM', 'LARGE'"
+      - "Used to stratify catch measurements when distinct size differences exist"
