@@ -6,9 +6,11 @@ Extracts from ERDDAP → Transforms → Validates → Writes DwC-A
 import pandas as pd
 from pathlib import Path
 import zipfile
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Any
 import requests
 from io import StringIO
+import yaml
+import warnings
 
 
 # ============================================================================
@@ -25,6 +27,164 @@ DATASET_IDS = {
 }
 
 OUTPUT_DIR = Path("dwc_archive_output")
+
+# LinkML mapping schema path
+MAPPING_SCHEMA = "ow1-to-dwc-mappings.yaml"
+
+# Meta.xml template path
+META_XML_TEMPLATE = "meta.xml"
+
+# ============================================================================
+# GENERIC MAPPING ENGINE
+# ============================================================================
+
+class MappingEngine:
+    """
+    Generic transformation engine that reads LinkML mapping schemas and applies
+    transformations to DataFrames based on exact_mappings annotations.
+    """
+    
+    def __init__(self, mapping_schema_path: str):
+        """
+        Initialize the mapping engine with a LinkML mapping schema.
+        
+        Args:
+            mapping_schema_path: Path to the LinkML mapping schema YAML file
+        """
+        self.schema_path = Path(mapping_schema_path)
+        self.schema = self._load_schema()
+        self.classes = self.schema.get('classes', {})
+        self.slots = self.schema.get('slots', {})
+        
+    def _load_schema(self) -> Dict:
+        """Load and parse the LinkML schema YAML file."""
+        with open(self.schema_path, 'r') as f:
+            return yaml.safe_load(f)
+    
+    def _extract_source_field(self, mapping: str) -> str:
+        """
+        Extract the source field name from a mapping string.
+        
+        Args:
+            mapping: String like "ow1_catch:time" or "ow1_catch:latitude"
+            
+        Returns:
+            The field name after the colon (e.g., "time", "latitude")
+        """
+        if ':' in mapping:
+            return mapping.split(':', 1)[1]
+        return mapping
+    
+    def _get_slot_mappings(self, class_name: str) -> Dict[str, Dict]:
+        """
+        Get all slot mappings for a given class, including inherited slots.
+        
+        Args:
+            class_name: Name of the target class (e.g., "Event", "Occurrence")
+            
+        Returns:
+            Dictionary mapping target field names to their mapping specifications
+        """
+        if class_name not in self.classes:
+            raise ValueError(f"Class '{class_name}' not found in schema")
+        
+        class_def = self.classes[class_name]
+        slot_names = class_def.get('slots', [])
+        
+        mappings = {}
+        for slot_name in slot_names:
+            if slot_name in self.slots:
+                slot_def = self.slots[slot_name]
+                mappings[slot_name] = {
+                    'definition': slot_def,
+                    'exact_mappings': slot_def.get('exact_mappings', []),
+                    'range': slot_def.get('range', 'string'),
+                    'required': slot_def.get('required', False)
+                }
+        
+        return mappings
+    
+    def _convert_type(self, value: Any, target_range: str) -> Any:
+        """
+        Convert a value to the target type specified in the LinkML range.
+        
+        Args:
+            value: The value to convert
+            target_range: LinkML range (e.g., "string", "float", "integer")
+            
+        Returns:
+            Converted value, or None if conversion fails
+        """
+        if pd.isna(value):
+            return None
+        
+        try:
+            if target_range == 'integer':
+                return int(value)
+            elif target_range == 'float' or target_range == 'double':
+                return float(value)
+            elif target_range == 'string':
+                return str(value)
+            else:
+                # Unknown type, return as-is
+                return value
+        except (ValueError, TypeError):
+            warnings.warn(f"Could not convert '{value}' to {target_range}")
+            return None
+    
+    def transform_dataframe(self, 
+                          source_df: pd.DataFrame, 
+                          target_class: str,
+                          strict: bool = True) -> pd.DataFrame:
+        """
+        Transform a source DataFrame to match a target LinkML class structure
+        using exact_mappings only.
+        
+        Args:
+            source_df: Input DataFrame with source field names
+            target_class: Name of target class in the mapping schema
+            strict: If True, only process fields with exact_mappings (recommended)
+            
+        Returns:
+            Transformed DataFrame with target field names
+        """
+        mappings = self._get_slot_mappings(target_class)
+        result = pd.DataFrame()
+        
+        for target_field, mapping_spec in mappings.items():
+            exact_mappings = mapping_spec['exact_mappings']
+            
+            # Only process if there's exactly one exact_mapping (strict 1:1 rename)
+            if len(exact_mappings) != 1:
+                if strict:
+                    # Skip fields without exactly one exact mapping
+                    continue
+                else:
+                    warnings.warn(
+                        f"Skipping '{target_field}': requires exactly one exact_mapping, "
+                        f"found {len(exact_mappings)}"
+                    )
+                    continue
+            
+            # Extract source field name
+            source_field = self._extract_source_field(exact_mappings[0])
+            
+            # Check if source field exists
+            if source_field not in source_df.columns:
+                if mapping_spec['required']:
+                    warnings.warn(
+                        f"Required field '{target_field}' cannot be mapped: "
+                        f"source field '{source_field}' not found in DataFrame"
+                    )
+                continue
+            
+            # Copy and convert the column
+            target_range = mapping_spec['range']
+            result[target_field] = source_df[source_field].apply(
+                lambda x: self._convert_type(x, target_range)
+            )
+        
+        return result
 
 
 # ============================================================================
@@ -96,6 +256,15 @@ class ERDDAPExtractor:
 
 class DwCTransformer:
     """Transform OW1 data to Darwin Core format."""
+    
+    def __init__(self, mapping_engine: MappingEngine = None):
+        """
+        Initialize transformer with optional mapping engine.
+        
+        Args:
+            mapping_engine: MappingEngine instance for auto-renaming fields
+        """
+        self.mapping_engine = mapping_engine
     
     @staticmethod
     def calculate_midpoint(start_lat: float, start_lon: float, 
@@ -210,6 +379,15 @@ class DwCTransformer:
             how='left'
         )
         
+        # First, use mapping engine to auto-rename fields with exact mappings
+        if self.mapping_engine:
+            print("  - Auto-renaming Occurrence fields from LinkML mappings...")
+            auto_renamed = self.mapping_engine.transform_dataframe(merged, "Occurrence")
+            print(f"    Auto-renamed {len(auto_renamed.columns)} fields")
+        else:
+            auto_renamed = pd.DataFrame()
+        
+        # Then handle complex fields that require custom logic
         occurrences = []
         
         for _, row in merged.iterrows():
@@ -225,8 +403,6 @@ class DwCTransformer:
                 'eventID': self.create_event_id(row['cruise'], row['station']),
                 'basisOfRecord': 'HumanObservation',
                 'occurrenceStatus': 'present',
-                'vernacularName': row['species_common_name'],
-                'scientificName': row.get('species_scientific_name'),
                 'scientificNameID': self.format_itis_lsid(row.get('ITIS_tsn')),
                 'taxonRank': 'species',
                 'kingdom': 'Animalia',
@@ -237,7 +413,15 @@ class DwCTransformer:
             }
             occurrences.append(occurrence)
         
-        return pd.DataFrame(occurrences)
+        result_df = pd.DataFrame(occurrences)
+        
+        # Merge auto-renamed fields with custom fields
+        # Auto-renamed fields that were manually handled should use manual version
+        for col in auto_renamed.columns:
+            if col not in result_df.columns:
+                result_df[col] = auto_renamed[col]
+        
+        return result_df
     
     def transform_to_emof(self, catch_df: pd.DataFrame) -> pd.DataFrame:
         """Transform CatchRecords to DwC Extended Measurement or Fact (eMoF)."""
@@ -364,7 +548,7 @@ class DwCTransformer:
 
 
 # ============================================================================
-# STEP 3: WRITE DARWIN CORE ARCHIVE
+# EML METADATA GENERATION
 # ============================================================================
 
 class EMLGenerator:
@@ -515,6 +699,11 @@ class EMLGenerator:
         
         return eml
 
+
+# ============================================================================
+# STEP 3: WRITE DARWIN CORE ARCHIVE
+# ============================================================================
+
 class DwCArchiveWriter:
     """Write Darwin Core Archive files."""
     
@@ -536,86 +725,17 @@ class DwCArchiveWriter:
         print(f"  Wrote eml.xml")
     
     def create_meta_xml(self):
-        """Create meta.xml descriptor for the archive."""
-        meta_xml = """<?xml version="1.0" encoding="UTF-8"?>
-<archive xmlns="http://rs.tdwg.org/dwc/text/" metadata="eml.xml">
-  <core encoding="UTF-8" fieldsTerminatedBy="\\t" linesTerminatedBy="\\n" 
-        ignoreHeaderLines="1" rowType="http://rs.tdwg.org/dwc/terms/Event">
-    <files>
-      <location>event.txt</location>
-    </files>
-    <id index="0"/>
-    <field index="0" term="http://rs.tdwg.org/dwc/terms/eventID"/>
-    <field index="1" term="http://rs.tdwg.org/dwc/terms/parentEventID"/>
-    <field index="2" term="http://rs.tdwg.org/dwc/terms/eventDate"/>
-    <field index="3" term="http://rs.tdwg.org/dwc/terms/decimalLatitude"/>
-    <field index="4" term="http://rs.tdwg.org/dwc/terms/decimalLongitude"/>
-    <field index="5" term="http://rs.tdwg.org/dwc/terms/geodeticDatum"/>
-    <field index="6" term="http://rs.tdwg.org/dwc/terms/coordinateUncertaintyInMeters"/>
-    <field index="7" term="http://rs.tdwg.org/dwc/terms/minimumDepthInMeters"/>
-    <field index="8" term="http://rs.tdwg.org/dwc/terms/maximumDepthInMeters"/>
-    <field index="9" term="http://rs.tdwg.org/dwc/terms/samplingProtocol"/>
-    <field index="10" term="http://rs.tdwg.org/dwc/terms/sampleSizeValue"/>
-    <field index="11" term="http://rs.tdwg.org/dwc/terms/sampleSizeUnit"/>
-    <field index="12" term="http://rs.tdwg.org/dwc/terms/eventRemarks"/>
-    <field index="13" term="http://rs.tdwg.org/dwc/terms/eventType"/>
-    <field index="14" term="http://rs.tdwg.org/dwc/terms/datasetID"/>
-    <field index="15" term="http://rs.tdwg.org/dwc/terms/locationID"/>
-    <field index="16" term="http://rs.tdwg.org/dwc/terms/waterBody"/>
-    <field index="17" term="http://rs.tdwg.org/dwc/terms/footprintWKT"/>
-    <field index="18" term="http://rs.tdwg.org/dwc/terms/footprintSRS"/>
-    <field index="19" term="http://rs.tdwg.org/dwc/terms/samplingEffort"/>
-  </core>
-  
-  <extension encoding="UTF-8" fieldsTerminatedBy="\\t" linesTerminatedBy="\\n" 
-            ignoreHeaderLines="1" 
-            rowType="http://rs.tdwg.org/dwc/terms/Occurrence">
-    <files>
-      <location>occurrence.txt</location>
-    </files>
-    <coreid index="0"/>
-    <field index="0" term="http://rs.tdwg.org/dwc/terms/eventID"/>
-    <field index="1" term="http://rs.tdwg.org/dwc/terms/occurrenceID"/>
-    <field index="2" term="http://rs.tdwg.org/dwc/terms/basisOfRecord"/>
-    <field index="3" term="http://rs.tdwg.org/dwc/terms/occurrenceStatus"/>
-    <field index="4" term="http://rs.tdwg.org/dwc/terms/vernacularName"/>
-    <field index="5" term="http://rs.tdwg.org/dwc/terms/scientificName"/>
-    <field index="6" term="http://rs.tdwg.org/dwc/terms/scientificNameID"/>
-    <field index="7" term="http://rs.tdwg.org/dwc/terms/taxonRank"/>
-    <field index="8" term="http://rs.tdwg.org/dwc/terms/kingdom"/>
-    <field index="9" term="http://rs.tdwg.org/dwc/terms/individualCount"/>
-    <field index="10" term="http://rs.tdwg.org/dwc/terms/organismQuantity"/>
-    <field index="11" term="http://rs.tdwg.org/dwc/terms/organismQuantityType"/>
-    <field index="12" term="http://rs.tdwg.org/dwc/terms/occurrenceRemarks"/>
-  </extension>
-  
-  <extension encoding="UTF-8" fieldsTerminatedBy="\\t" linesTerminatedBy="\\n" 
-            ignoreHeaderLines="1" 
-            rowType="http://rs.iobis.org/obis/terms/ExtendedMeasurementOrFact">
-    <files>
-        <location>extendedmeasurementorfact.txt</location>
-    </files>
-    <coreid index="0"/>
-    <field index="0" term="http://rs.tdwg.org/dwc/terms/eventID"/>
-    <field index="1" term="http://rs.tdwg.org/dwc/terms/occurrenceID"/>
-    <field index="2" term="http://rs.tdwg.org/dwc/terms/measurementID"/>
-    <field index="3" term="http://rs.tdwg.org/dwc/terms/measurementType"/>
-    <field index="4" term="http://rs.tdwg.org/dwc/terms/measurementValue"/>
-    <field index="5" term="http://rs.tdwg.org/dwc/terms/measurementUnit"/>
-    <field index="6" term="http://rs.tdwg.org/dwc/terms/measurementTypeID"/>
-    <field index="7" term="http://rs.tdwg.org/dwc/terms/measurementValueID"/>
-    <field index="8" term="http://rs.tdwg.org/dwc/terms/measurementAccuracy"/>
-    <field index="9" term="http://rs.tdwg.org/dwc/terms/measurementDeterminedDate"/>
-    <field index="10" term="http://rs.tdwg.org/dwc/terms/measurementDeterminedBy"/>
-    <field index="11" term="http://rs.tdwg.org/dwc/terms/measurementMethod"/>
-    <field index="12" term="http://rs.tdwg.org/dwc/terms/measurementRemarks"/>
-   </extension>
-</archive>"""
+        """Copy meta.xml template to output directory."""
+        if not Path(META_XML_TEMPLATE).exists():
+            raise FileNotFoundError(
+                f"meta.xml template not found at '{META_XML_TEMPLATE}'. "
+                f"Please ensure meta.xml exists in the working directory."
+            )
         
-        meta_path = self.output_dir / "meta.xml"
-        with open(meta_path, 'w', encoding='utf-8') as f:
-            f.write(meta_xml)
-        print(f"  Wrote meta.xml")
+        import shutil
+        shutil.copy(META_XML_TEMPLATE, self.output_dir / "meta.xml")
+        print(f"  Copied meta.xml from template")
+        
     
     def create_zip_archive(self, archive_name: str = "ow1_dwca.zip"):
         """Create a zipped Darwin Core Archive."""
@@ -650,7 +770,12 @@ def main():
     
     # Step 2: Transform to Darwin Core
     print("Transforming to Darwin Core...")
-    transformer = DwCTransformer()
+    
+    # Initialize mapping engine
+    print(f"Loading LinkML mapping schema from {MAPPING_SCHEMA}...")
+    mapping_engine = MappingEngine(MAPPING_SCHEMA)
+    
+    transformer = DwCTransformer(mapping_engine)
     
     events = transformer.transform_to_event(tow_df)
     print(f"  Created {len(events)} Event records")
