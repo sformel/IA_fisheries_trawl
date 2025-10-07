@@ -70,15 +70,15 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Workflow: workflow.md
-  - Architecture:
-    - Overview: architecture/overview.md
-    - Data Models: architecture/data-models.md
-    - Transformation Engine: architecture/transformation-engine.md
+  #- Architecture:
+  #  - Overview: architecture/overview.md
+  #  - Data Models: architecture/data-models.md
+  #  - Transformation Engine: architecture/transformation-engine.md
   - Schema Documentation:
     - Source Data Schema: schemas/source-data.md
     - Darwin Core Mappings: schemas/dwc-mappings.md
     - EML Mappings: schemas/eml-mappings.md
-  - Outputs: outputs.md
+  #- Outputs: outputs.md
   - Reusability Guide: reusability.md
   - About: about.md
 
