@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<eml:eml xmlns:eml="https://eml.ecoinformatics.org/eml-2.2.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns:stmml="http://www.xml-cml.org/schema/stmml-1.2"
+         xsi:schemaLocation="https://eml.ecoinformatics.org/eml-2.2.0 https://eml.ecoinformatics.org/eml-2.2.0/eml.xsd"
+         packageId="bottom_trawl_survey_ow1_catch"
+         system="https://rowlrs-data.marine.rutgers.edu/erddap">
+  
+  <dataset>
+    <title>Bottom Trawl Survey OW1 Catch</title>
+    
+    <creator>
+      <organizationName>Rutgers University</organizationName>
+      <individualName>
+        <surName>Rutgers Marine Ecosystem Data Team</surName>
+      </individualName>
+      <electronicMailAddress>ecosystemdata@marine.rutgers.edu</electronicMailAddress>
+      <onlineUrl>https://marine.rutgers.edu/main/</onlineUrl>
+    </creator>
+    
+    <contact>
+      <organizationName>Rutgers University</organizationName>
+      <individualName>
+        <surName>Rutgers Marine Ecosystem Data Team</surName>
+      </individualName>
+      <electronicMailAddress>ecosystemdata@marine.rutgers.edu</electronicMailAddress>
+    </contact>
+    
+    <publisher>
+      <organizationName>Rutgers University</organizationName>
+      <individualName>
+        <surName>Rutgers Marine Ecosystem Data Team</surName>
+      </individualName>
+      <electronicMailAddress>ecosystemdata@marine.rutgers.edu</electronicMailAddress>
+    </publisher>
+    
+    <abstract>
+      <para>Fisheries Monitoring in Ocean Wind 01. Two seasonal pre-construction surveys. Twenty tows conducted in the lease area and twenty in the control area each season (160/year total). Tows conducted at three knots for 20 minutes. Trawl data will inform relative biomass (kg/tow) by species, size frequency by species, condition index (length-weight) by species, community assemblage, and gut content of a subset of species.</para>
+    </abstract>
+    
+    <keywordSet>
+      <keyword>array</keyword>
+      <keyword>array-data</keyword>
+      <keyword>bottom</keyword>
+      <keyword>catch</keyword>
+      <keyword>class</keyword>
+      <keyword>common</keyword>
+      <keyword>comprehensive</keyword>
+      <keyword>count</keyword>
+      <keyword>cruise</keyword>
+      <keyword>data</keyword>
+      <keyword>depth</keyword>
+      <keyword>identifier</keyword>
+      <keyword>index</keyword>
+      <keyword>large</keyword>
+      <keyword>length</keyword>
+      <keyword>length_type</keyword>
+      <keyword>mean</keyword>
+      <keyword>mean_length</keyword>
+      <keyword>name</keyword>
+      <keyword>ow1</keyword>
+      <keyword>profiler</keyword>
+      <keyword>rutgers</keyword>
+      <keyword>salinity</keyword>
+      <keyword>salinity-temperature-depth</keyword>
+      <keyword>size</keyword>
+      <keyword>size_class</keyword>
+      <keyword>species</keyword>
+      <keyword>species_common_name</keyword>
+      <keyword>station</keyword>
+      <keyword>statistics</keyword>
+      <keyword>std</keyword>
+      <keyword>std_length</keyword>
+      <keyword>stewardship</keyword>
+      <keyword>survey</keyword>
+      <keyword>system</keyword>
+      <keyword>taxonomy</keyword>
+      <keyword>temperature</keyword>
+      <keyword>total</keyword>
+      <keyword>total_count</keyword>
+      <keyword>total_weight</keyword>
+      <keyword>trawl</keyword>
+      <keyword>type</keyword>
+      <keyword>university</keyword>
+      <keyword>weight</keyword>
+    </keywordSet>
+    
+    <intellectualRights>
+      <para>see Data Use Agreement</para>
+    </intellectualRights>
+    
+    <distribution>
+      <online>
+        <url>https://rowlrs.marine.rutgers.edu/</url>
+      </online>
+    </distribution>
+    
+    <project>
+      <title>Ocean Wind 01 Fisheries Monitoring Plan, Bottom Trawl</title>
+      <funding>
+        <para>Funding provided by Orsted.</para>
+      </funding>
+      <personnel>
+        <individualName>
+          <surName>Jason Morson</surName>
+        </individualName>
+        <role>Project Co-Principal Investigator</role>
+      </personnel>
+      <personnel>
+        <individualName>
+          <surName>Doug Zemeckis</surName>
+        </individualName>
+        <role>Project Co-Principal Investigator</role>
+      </personnel>
+      <personnel>
+        <individualName>
+          <surName>Thomas Grothues</surName>
+        </individualName>
+        <role>Project Lead Principal Investigator and Project Fisheries Scientist</role>
+      </personnel>
+      <personnel>
+        <individualName>
+          <surName>Joey O'Brien</surName>
+        </individualName>
+        <role>Lab Manager</role>
+      </personnel>
+      <personnel>
+        <individualName>
+          <surName>Sam Chew Chin</surName>
+        </individualName>
+        <role>Fisheries Scientist</role>
+      </personnel>
+      <personnel>
+        <individualName>
+          <surName>Jamie Wilson</surName>
+        </individualName>
+        <role>Fisheries Observer</role>
+      </personnel>
+      <personnel>
+        <individualName>
+          <surName>Helaina McKeon</surName>
+        </individualName>
+        <role>Fisheries Observer</role>
+      </personnel>
+      <personnel>
+        <individualName>
+          <surName>Andre Ascura</surName>
+        </individualName>
+        <role>Technician</role>
+      </personnel>
+      <personnel>
+        <individualName>
+          <surName>Kaycee Coleman</surName>
+        </individualName>
+        <role>Project Management</role>
+      </personnel>
+      <personnel>
+        <individualName>
+          <surName>Laura Nazzaro</surName>
+        </individualName>
+        <role>Data Management</role>
+      </personnel>
+    </project>
+    
+    <methods>
+      <methodStep>
+        <description>
+          <para>Survey performed aboard F/V Darana R with Captains Robert Rhule and James Rhule</para>
+          <para>Platform: F/V Darana R</para>
+          <para>Program: Ocean Wind 01 Fisheries Monitoring Plan</para>
+        </description>
+      </methodStep>
+    </methods>
+  </dataset>
+</eml:eml>
