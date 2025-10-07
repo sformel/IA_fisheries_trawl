@@ -8,9 +8,8 @@ This guide explains how to adapt the LinkML-based transformation approach for yo
 flowchart LR
     A[Your Data Source] --> B[Document in LinkML]
     B --> C[Create Mapping Schema]
-    C --> D[Use MappingEngine]
-    D --> E[Add Custom Logic]
-    E --> F[Darwin Core Archive]
+    C --> D[Use MappingEngine & Custom Logic]
+    D --> E[Darwin Core Archive]
     
     style B fill:#e1f5ff
     style C fill:#fff4e1
