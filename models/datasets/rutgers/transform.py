@@ -367,6 +367,154 @@ class DwCTransformer:
 # STEP 3: WRITE DARWIN CORE ARCHIVE
 # ============================================================================
 
+class EMLGenerator:
+    """Generate EML metadata from ERDDAP dataset metadata."""
+    
+    def __init__(self, erddap_server: str):
+        self.erddap_server = erddap_server
+    
+    def fetch_metadata(self, dataset_id: str) -> Dict:
+        """Fetch NC_GLOBAL metadata from ERDDAP info endpoint."""
+        url = f"{self.erddap_server}/info/{dataset_id}/index.json"
+        response = requests.get(url)
+        response.raise_for_status()
+        
+        data = response.json()
+        metadata = {}
+        
+        # Extract NC_GLOBAL attributes
+        for row in data['table']['rows']:
+            if row[0] == 'attribute' and row[1] == 'NC_GLOBAL':
+                attr_name = row[2]
+                value = row[4]
+                metadata[attr_name] = value
+        
+        return metadata
+    
+    def parse_contributors(self, names_str: str, roles_str: str) -> list:
+        """Parse comma-separated contributor names and roles into list of dicts."""
+        if not names_str or not roles_str:
+            return []
+        
+        names = [n.strip() for n in names_str.split(',')]
+        roles = [r.strip() for r in roles_str.split(',')]
+        
+        # Pair them up (assume equal length)
+        contributors = []
+        for i in range(min(len(names), len(roles))):
+            contributors.append({
+                'name': names[i],
+                'role': roles[i]
+            })
+        return contributors
+    
+    def generate_eml_xml(self, metadata: Dict, package_id: str = None) -> str:
+        """Generate EML XML from ERDDAP metadata."""
+        
+        # Use dataset id as package id if not provided
+        pkg_id = package_id or metadata.get('id', 'unknown')
+        
+        # Parse contributors
+        contributors = self.parse_contributors(
+            metadata.get('contributor_name', ''),
+            metadata.get('contributor_role', '')
+        )
+        
+        # Parse keywords
+        keywords = [kw.strip() for kw in metadata.get('keywords', '').split(',')]
+        
+        # Build EML XML
+        eml = f"""<?xml version="1.0" encoding="UTF-8"?>
+<eml:eml xmlns:eml="https://eml.ecoinformatics.org/eml-2.2.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns:stmml="http://www.xml-cml.org/schema/stmml-1.2"
+         xsi:schemaLocation="https://eml.ecoinformatics.org/eml-2.2.0 https://eml.ecoinformatics.org/eml-2.2.0/eml.xsd"
+         packageId="{pkg_id}"
+         system="{self.erddap_server}">
+  
+  <dataset>
+    <title>{metadata.get('title', '')}</title>
+    
+    <creator>
+      <organizationName>{metadata.get('creator_institution', '')}</organizationName>
+      <individualName>
+        <surName>{metadata.get('creator_name', '')}</surName>
+      </individualName>
+      <electronicMailAddress>{metadata.get('creator_email', '')}</electronicMailAddress>
+      <onlineUrl>{metadata.get('creator_url', '')}</onlineUrl>
+    </creator>
+    
+    <contact>
+      <organizationName>{metadata.get('publisher_institution', '')}</organizationName>
+      <individualName>
+        <surName>{metadata.get('publisher_name', '')}</surName>
+      </individualName>
+      <electronicMailAddress>{metadata.get('publisher_email', '')}</electronicMailAddress>
+    </contact>
+    
+    <publisher>
+      <organizationName>{metadata.get('publisher_institution', '')}</organizationName>
+      <individualName>
+        <surName>{metadata.get('publisher_name', '')}</surName>
+      </individualName>
+      <electronicMailAddress>{metadata.get('publisher_email', '')}</electronicMailAddress>
+    </publisher>
+    
+    <abstract>
+      <para>{metadata.get('summary', '')}</para>
+    </abstract>
+    
+    <keywordSet>"""
+        
+        for keyword in keywords:
+            eml += f"\n      <keyword>{keyword}</keyword>"
+        
+        eml += f"""
+    </keywordSet>
+    
+    <intellectualRights>
+      <para>{metadata.get('license', '')}</para>
+    </intellectualRights>
+    
+    <distribution>
+      <online>
+        <url>{metadata.get('infoUrl', '')}</url>
+      </online>
+    </distribution>
+    
+    <project>
+      <title>{metadata.get('project', '')}</title>
+      <funding>
+        <para>{metadata.get('acknowledgement', '')}</para>
+      </funding>"""
+        
+        if contributors:
+            for contributor in contributors:
+                eml += f"""
+      <personnel>
+        <individualName>
+          <surName>{contributor['name']}</surName>
+        </individualName>
+        <role>{contributor['role']}</role>
+      </personnel>"""
+        
+        eml += """
+    </project>
+    
+    <methods>
+      <methodStep>
+        <description>
+          <para>""" + metadata.get('comment', '') + """</para>
+          <para>Platform: """ + metadata.get('platform_name', '') + """</para>
+          <para>Program: """ + metadata.get('program', '') + """</para>
+        </description>
+      </methodStep>
+    </methods>
+  </dataset>
+</eml:eml>"""
+        
+        return eml
+
 class DwCArchiveWriter:
     """Write Darwin Core Archive files."""
     
@@ -379,6 +527,13 @@ class DwCArchiveWriter:
         filepath = self.output_dir / filename
         df.to_csv(filepath, sep='\t', index=False, encoding='utf-8')
         print(f"  Wrote {filename} ({len(df)} records)")
+    
+    def write_eml(self, eml_xml: str):
+        """Write EML metadata file."""
+        eml_path = self.output_dir / "eml.xml"
+        with open(eml_path, 'w', encoding='utf-8') as f:
+            f.write(eml_xml)
+        print(f"  Wrote eml.xml")
     
     def create_meta_xml(self):
         """Create meta.xml descriptor for the archive."""
@@ -467,7 +622,7 @@ class DwCArchiveWriter:
         archive_path = self.output_dir.parent / archive_name
         
         with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            for file in ['event.txt', 'occurrence.txt', 'extendedmeasurementorfact.txt', 'meta.xml']:
+            for file in ['event.txt', 'occurrence.txt', 'extendedmeasurementorfact.txt', 'meta.xml', 'eml.xml']:
                 zipf.write(self.output_dir / file, arcname=file)
         
         print(f"\nCreated Darwin Core Archive: {archive_path}")
@@ -514,6 +669,14 @@ def main():
     writer.write_core_file(occurrences, 'occurrence.txt')
     writer.write_core_file(emof, 'extendedmeasurementorfact.txt')
     writer.create_meta_xml()
+    
+    # Generate and write EML
+    print("\nGenerating EML metadata...")
+    eml_generator = EMLGenerator(ERDDAP_SERVER)
+    metadata = eml_generator.fetch_metadata(DATASET_IDS['catch'])
+    eml_xml = eml_generator.generate_eml_xml(metadata)
+    writer.write_eml(eml_xml)
+    print()
     
     # Step 4: Create ZIP archive
     archive_path = writer.create_zip_archive()
