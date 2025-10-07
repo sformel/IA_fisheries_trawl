@@ -38,7 +38,7 @@ _Note: if you already have a SQL schema, there are tools to automatically turn t
 
 Again, this is essentially a well-structured data dictionary. Terms might look like this:
 
-```
+```yaml
 latitude:
     description: Latitude coordinates entered at start of trawl
     range: float
@@ -91,7 +91,7 @@ slots:
 
 But what about when they don't match up exactly?  Here we began to decide what we will do. Importantly, we're capturing the information in a structured way so it can be leveraged later.
 
-```
+```yaml
   decimalLongitude:
     description: >-
       The geographic longitude in decimal degrees of the geographic center of a Location.

@@ -40,6 +40,7 @@ Suppose you have a survey with these fields:
 **File**: `models/datasets/your_survey/your-survey-schema.yaml`
 
 ```yaml
+
 id: https://example.org/your-survey
 name: your-survey
 title: Your Survey Data Model
