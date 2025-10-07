@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: "If you use this software or approach, please cite it as below."
+type: software
+title: "LinkML for Fisheries Data Standardization: A Proof of Concept Using Bottom Trawl Survey Data"
+abstract: "Demonstrates using LinkML (Linked Data Modeling Language) to transform fisheries trawl survey data into Darwin Core Archives for publication to biodiversity repositories like OBIS and GBIF. Provides reusable schemas and transformation pipeline for mobilizing marine survey data."
+authors:
+  - family-names: Formel
+    given-names: Stephen
+    email: steve@thedatapatch.com
+    orcid: "https://orcid.org/0000-0001-7418-1244"
+    affiliation: "The Data Patch"
+repository-code: "https://github.com/sformel/IA_fisheries_trawl"
+url: "https://sformel.github.io/IA_fisheries_trawl/"
+keywords:
+  - fisheries
+  - Darwin Core
+  - LinkML
+  - OBIS
+  - biodiversity informatics
+  - data standardization
+  - bottom trawl
+  - offshore wind
+  - marine biology
+license: CC-BY-4.0
+version: 1.0.0
+date-released: 2025-01-15

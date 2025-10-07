@@ -96,4 +96,409 @@ slots:
       ucum_code: deg
     slot_uri: your_survey:lat_dd
   
-  lon
+  lon_dd:
+    description: Longitude in decimal degrees
+    range: float
+    unit:
+      ucum_code: deg
+    slot_uri: your_survey:lon_dd
+  
+  common_name:
+    description: Species common name
+    range: string
+    slot_uri: your_survey:common_name
+  
+  catch_wt_kg:
+    description: Catch weight in kilograms
+    range: float
+    unit:
+      ucum_code: kg
+    minimum_value: 0.0
+    slot_uri: your_survey:catch_wt_kg
+  
+  num_fish:
+    description: Number of individuals
+    range: integer
+    minimum_value: 0
+    slot_uri: your_survey:num_fish
+```
+
+**Key elements**:
+
+- **Classes**: Organize your data into logical groups (hauls, catch, etc.)
+- **Slots**: Define each field with type, units, constraints
+- **Validation**: Add `minimum_value`, `pattern`, `required` as needed
+- **URIs**: Use consistent prefix for your namespace
+
+---
+
+## Step 2: Create Darwin Core Mapping Schema
+
+Define how your source fields map to Darwin Core terms.
+
+**File**: `models/datasets/your_survey/your-survey-to-dwc.yaml`
+
+```yaml
+id: https://example.org/your-survey-dwc
+name: your-survey-dwc
+title: Darwin Core Mappings for Your Survey
+
+default_prefix: dwc
+default_range: string
+
+imports:
+  - linkml:types
+
+prefixes:
+  dwc: http://rs.tdwg.org/dwc/terms/
+  your_survey: https://example.org/your-survey/
+
+classes:
+  Event:
+    description: Sampling event records
+    slots:
+      - eventID
+      - eventDate
+      - decimalLatitude
+      - decimalLongitude
+      
+  Occurrence:
+    description: Species observation records
+    slots:
+      - occurrenceID
+      - eventID
+      - vernacularName
+      - individualCount
+
+slots:
+  # Event mappings
+  eventDate:
+    description: Date-time of the event
+    slot_uri: dwc:eventDate
+    exact_mappings:
+      - your_survey:datetime
+  
+  decimalLatitude:
+    description: Latitude of event location
+    slot_uri: dwc:decimalLatitude
+    exact_mappings:
+      - your_survey:lat_dd
+  
+  decimalLongitude:
+    description: Longitude of event location
+    slot_uri: dwc:decimalLongitude
+    exact_mappings:
+      - your_survey:lon_dd
+  
+  eventID:
+    description: Unique event identifier
+    slot_uri: dwc:eventID
+    related_mappings:
+      - your_survey:survey_id
+      - your_survey:haul_id
+    comments:
+      - "Generate as: {survey_id}:{haul_id}"
+  
+  # Occurrence mappings
+  vernacularName:
+    description: Common species name
+    slot_uri: dwc:vernacularName
+    exact_mappings:
+      - your_survey:common_name
+  
+  individualCount:
+    description: Number of individuals
+    slot_uri: dwc:individualCount
+    exact_mappings:
+      - your_survey:num_fish
+  
+  occurrenceID:
+    description: Unique occurrence identifier
+    slot_uri: dwc:occurrenceID
+    related_mappings:
+      - your_survey:survey_id
+      - your_survey:haul_id
+      - your_survey:common_name
+    comments:
+      - "Generate as: {survey_id}:{haul_id}:{common_name}"
+```
+
+**Mapping types**:
+
+- **exact_mappings**: 1:1 field renames (auto-transformed)
+- **related_mappings**: Requires custom logic (concatenation, calculation)
+- **comments**: Document transformation rules
+
+---
+
+## Step 3: Adapt the Transformation Code
+
+Copy and modify the transformation pipeline for your data.
+
+### Option A: Minimal Changes
+
+If your data structure is similar to OW1, just update:
+
+```python
+# In your_survey_transform.py
+
+# Update dataset IDs
+DATASET_IDS = {
+    'hauls': 'your_haul_dataset_id',
+    'catch': 'your_catch_dataset_id',
+    'species': 'your_species_lookup_id'
+}
+
+# Update mapping schema path
+MAPPING_SCHEMA = "models/datasets/your_survey/your-survey-to-dwc.yaml"
+
+# Initialize MappingEngine with your schema
+mapping_engine = MappingEngine(MAPPING_SCHEMA)
+```
+
+### Option B: Custom Transformer
+
+Create a new transformer class for your specific logic:
+
+```python
+class YourSurveyTransformer:
+    """Transform your survey data to Darwin Core."""
+    
+    def __init__(self, mapping_engine: MappingEngine):
+        self.mapping_engine = mapping_engine
+    
+    def transform_to_event(self, haul_df: pd.DataFrame) -> pd.DataFrame:
+        """Transform haul records to Darwin Core Events."""
+        
+        # Use mapping engine for auto-rename
+        auto_renamed = self.mapping_engine.transform_dataframe(
+            haul_df, 
+            "Event"
+        )
+        
+        # Custom logic for complex fields
+        events = []
+        for _, row in haul_df.iterrows():
+            event = {
+                'eventID': f"{row['SURVEY_ID']}:{row['HAUL_ID']}",
+                'eventType': 'haul',
+                # ... other custom fields
+            }
+            events.append(event)
+        
+        result_df = pd.DataFrame(events)
+        
+        # Merge auto-renamed fields
+        for col in auto_renamed.columns:
+            if col not in result_df.columns:
+                result_df[col] = auto_renamed[col]
+        
+        return result_df
+```
+
+---
+
+## Step 4: Generate Documentation
+
+Update the documentation generator configuration:
+
+**In `scripts/generate_schema_docs.py`**:
+
+```python
+SCHEMAS = {
+    'your-survey-schema.yaml': {
+        'output': 'your-survey-source.md',
+        'title': 'Your Survey Source Data',
+        'type': 'source'
+    },
+    'your-survey-to-dwc.yaml': {
+        'output': 'your-survey-dwc.md',
+        'title': 'Your Survey Darwin Core Mappings',
+        'type': 'mappings'
+    }
+}
+```
+
+Then generate docs:
+
+```bash
+python scripts/generate_schema_docs.py
+```
+
+---
+
+## Step 5: Test and Validate
+
+### Test Locally
+
+```bash
+# Run transformation
+python models/datasets/your_survey/transform.py
+
+# Check outputs
+ls models/datasets/your_survey/dwca/
+
+# Validate with GBIF validator
+# Upload to: https://www.gbif.org/tools/data-validator
+```
+
+### Common Issues
+
+**Problem**: MappingEngine skips fields  
+**Solution**: Check that `exact_mappings` has exactly one source
+
+**Problem**: Missing required Darwin Core fields  
+**Solution**: Add custom logic in transformer for complex fields
+
+**Problem**: Type conversion errors  
+**Solution**: Verify `range` in mapping schema matches source data type
+
+---
+
+## Reusable Components
+
+These components work across any dataset:
+
+### MappingEngine (Zero Changes Needed)
+
+```python
+# Works with any LinkML mapping schema
+engine = MappingEngine('path/to/mappings.yaml')
+df = engine.transform_dataframe(source_df, 'TargetClass')
+```
+
+### Documentation Generator (Minimal Config)
+
+```python
+# Just update SCHEMAS dict
+SCHEMAS = {'your-schema.yaml': {...}}
+```
+
+### Meta.xml Template (Reusable)
+
+Copy `models/datasets/rutgers/meta.xml` - it's generic!
+
+---
+
+## What to Customize
+
+For each new dataset, you'll need to:
+
+1. **Source schema** (100% custom) - Document your data structure
+2. **Mapping schema** (80% similar) - Map to Darwin Core (structure is reusable)
+3. **Custom transformer** (50% similar) - Adapt ID generation and complex logic
+4. **Documentation config** (minimal) - Update file paths
+
+**Time estimate**: 2-4 hours for a similar fisheries survey
+
+---
+
+## Example: NEAMAP Survey
+
+Here's how you'd adapt for NEAMAP (Northeast Area Monitoring and Assessment Program):
+
+### 1. Source Schema
+
+```yaml
+# neamap-schema.yaml
+classes:
+  CruiseInfo:
+    slots: [cruise_id, year, season]
+  
+  StationData:
+    slots: [cruise_id, station_id, date, start_lat, start_lon, ...]
+  
+  BiologicalData:
+    slots: [cruise_id, station_id, common_name, total_number, ...]
+```
+
+### 2. Mapping Schema
+
+```yaml
+# neamap-to-dwc.yaml
+slots:
+  eventID:
+    related_mappings:
+      - neamap:cruise_id
+      - neamap:station_id
+  
+  scientificName:
+    exact_mappings:
+      - neamap:scientific_name
+```
+
+### 3. Custom Transformer
+
+```python
+class NEAMAPTransformer(DwCTransformer):
+    @staticmethod
+    def create_event_id(cruise_id: str, station_id: str) -> str:
+        return f"NEAMAP_{cruise_id}_{station_id}"
+```
+
+### 4. Run Pipeline
+
+```bash
+python models/datasets/neamap/transform.py
+```
+
+---
+
+## Advanced: Multi-Survey Integration
+
+To combine multiple surveys into one archive:
+
+```python
+# Load all surveys with same structure
+ow1_events = transform_ow1_to_events()
+neamap_events = transform_neamap_to_events()
+nefsc_events = transform_nefsc_to_events()
+
+# Combine
+all_events = pd.concat([ow1_events, neamap_events, nefsc_events])
+
+# Write single DwC-A
+writer.write_core_file(all_events, 'event.txt')
+```
+
+**Key**: All surveys must map to the same Darwin Core structure!
+
+---
+
+## Getting Help
+
+### LinkML Resources
+
+- **Documentation**: https://linkml.io/
+- **Tutorials**: https://linkml.io/linkml/intro/tutorial.html
+- **Slack**: LinkML community workspace
+
+### Darwin Core Resources
+
+- **Standard**: https://dwc.tdwg.org/
+- **GBIF Guide**: https://www.gbif.org/darwin-core
+- **OBIS Manual**: https://obis.org/manual/
+
+### This Project
+
+- **GitHub Issues**: https://github.com/sformel/IA_fisheries_trawl/issues
+- **Email**: steve@formeldataservices.com
+
+---
+
+## Checklist for New Datasets
+
+- [ ] Create source data schema (YAML)
+- [ ] Create Darwin Core mapping schema (YAML)
+- [ ] Copy and adapt transformer code
+- [ ] Update documentation generator config
+- [ ] Generate documentation
+- [ ] Test transformation locally
+- [ ] Validate with GBIF Data Validator
+- [ ] Publish to OBIS/GBIF
+
+---
+
+**Ready to start?** Begin with [Step 1: Document Your Source Data](#step-1-document-your-source-data)
+
+**Need examples?** See the [complete OW1 implementation](https://github.com/sformel/IA_fisheries_trawl/tree/main/models/datasets/rutgers)
