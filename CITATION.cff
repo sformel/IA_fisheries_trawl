@@ -6,7 +6,7 @@ abstract: "Demonstrates using LinkML (Linked Data Modeling Language) to transfor
 authors:
   - family-names: Formel
     given-names: Stephen
-    email: steve@thedatapatch.com
+    email: steve@formeldataservices.com
     orcid: "https://orcid.org/0000-0001-7418-1244"
     affiliation: "The Data Patch"
 repository-code: "https://github.com/sformel/IA_fisheries_trawl"

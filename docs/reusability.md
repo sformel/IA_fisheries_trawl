@@ -390,80 +390,6 @@ For each new dataset, you'll need to:
 3. **Custom transformer** (50% similar) - Adapt ID generation and complex logic
 4. **Documentation config** (minimal) - Update file paths
 
-**Time estimate**: 2-4 hours for a similar fisheries survey
-
----
-
-## Example: NEAMAP Survey
-
-Here's how you'd adapt for NEAMAP (Northeast Area Monitoring and Assessment Program):
-
-### 1. Source Schema
-
-```yaml
-# neamap-schema.yaml
-classes:
-  CruiseInfo:
-    slots: [cruise_id, year, season]
-  
-  StationData:
-    slots: [cruise_id, station_id, date, start_lat, start_lon, ...]
-  
-  BiologicalData:
-    slots: [cruise_id, station_id, common_name, total_number, ...]
-```
-
-### 2. Mapping Schema
-
-```yaml
-# neamap-to-dwc.yaml
-slots:
-  eventID:
-    related_mappings:
-      - neamap:cruise_id
-      - neamap:station_id
-  
-  scientificName:
-    exact_mappings:
-      - neamap:scientific_name
-```
-
-### 3. Custom Transformer
-
-```python
-class NEAMAPTransformer(DwCTransformer):
-    @staticmethod
-    def create_event_id(cruise_id: str, station_id: str) -> str:
-        return f"NEAMAP_{cruise_id}_{station_id}"
-```
-
-### 4. Run Pipeline
-
-```bash
-python models/datasets/neamap/transform.py
-```
-
----
-
-## Advanced: Multi-Survey Integration
-
-To combine multiple surveys into one archive:
-
-```python
-# Load all surveys with same structure
-ow1_events = transform_ow1_to_events()
-neamap_events = transform_neamap_to_events()
-nefsc_events = transform_nefsc_to_events()
-
-# Combine
-all_events = pd.concat([ow1_events, neamap_events, nefsc_events])
-
-# Write single DwC-A
-writer.write_core_file(all_events, 'event.txt')
-```
-
-**Key**: All surveys must map to the same Darwin Core structure!
-
 ---
 
 ## Getting Help
@@ -484,21 +410,6 @@ writer.write_core_file(all_events, 'event.txt')
 
 - **GitHub Issues**: https://github.com/sformel/IA_fisheries_trawl/issues
 - **Email**: steve@formeldataservices.com
-
----
-
-## Checklist for New Datasets
-
-- [ ] Create source data schema (YAML)
-- [ ] Create Darwin Core mapping schema (YAML)
-- [ ] Copy and adapt transformer code
-- [ ] Update documentation generator config
-- [ ] Generate documentation
-- [ ] Test transformation locally
-- [ ] Validate with GBIF Data Validator
-- [ ] Publish to OBIS/GBIF
-
----
 
 **Ready to start?** Begin with [Step 1: Document Your Source Data](#step-1-document-your-source-data)
 
