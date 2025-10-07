@@ -5,31 +5,20 @@ This page walks through the entire data transformation pipeline from source fish
 ## Overview Diagram
 
 ```mermaid
-flowchart TD
-    A[ERDDAP Server<br/>3 Datasets] --> B[Extract<br/>ERDDAPExtractor]
-    B --> C[Source Data<br/>Tows, Catch, Species]
-    C --> D[LinkML Schema<br/>ow1-catch-schema.yaml]
-    D --> E[Mapping Schema<br/>ow1-to-dwc-mappings.yaml]
-    E --> F[MappingEngine<br/>Auto-rename fields]
-    F --> G[DwCTransformer<br/>Complex logic]
-    G --> H[Darwin Core Data<br/>Events, Occurrences, eMoF]
-    H --> I[DwC Archive Writer]
+graph LR
+    A[Source Data<br/>For example: ERDDAP/CSV] --> B[LinkML Schema<br/>Data Dictionary]
+    B --> C[LinkML Mappings<br/>to Darwin Core]
+    C --> D[Darwin Core Archive<br/>OBIS/GBIF Ready]
     
-    J[meta.xml<br/>Template] --> I
-    K[EML Generator<br/>Metadata] --> I
-    
-    I --> L[Darwin Core Archive<br/>ZIP file]
-    L --> M[OBIS/GBIF<br/>Publication]
-    
-    style D fill:#e1f5ff
-    style E fill:#fff4e1
-    style F fill:#d4edda
-    style L fill:#f8d7da
+    style B fill:#e1f5ff
+    style C fill:#fff4e1
 ```
 
 ## Step-by-Step Process
 
-### 1. Data Source: ERDDAP Datasets
+### 1. Source Data: ERDDAP Datasets
+
+<https://rowlrs-data.marine.rutgers.edu/erddap>
 
 The workflow begins with three datasets hosted on a Rutgers ERDDAP server:
 
@@ -39,9 +28,33 @@ The workflow begins with three datasets hosted on a Rutgers ERDDAP server:
 
 **Challenge**: These datasets use fisheries-specific terminology and structure that doesn't directly match Darwin Core.
 
-### 2. Source Data Modeling (LinkML)
+### 2. Make LinkML Schema (AKA data model, AKA data dictionary)
 
-We create `ow1-catch-schema.yaml` to formally document the source data structure:
+Here we are describing two parts: what 'terms' do we have, and how should those terms be grouped? 
+
+_Note: if you already have a SQL schema, there are tools to automatically turn this into LinkML._
+
+#### What terms do we have?
+
+Again, this is essentially a well-structured data dictionary. Terms might look like this:
+
+```
+latitude:
+    description: Latitude coordinates entered at start of trawl
+    range: float
+    required: true
+    unit:
+      ucum_code: deg
+    slot_uri: ow1_catch:latitude
+    annotations:
+      erddap_source: "latitude (start_latitude)"
+      erddap_standard_name: "latitude"
+      erddap_units: "degrees_north"
+```
+
+#### How should those terms be grouped? 
+
+These are like tables in a database. We define classes, and there is nothing wrong with a term being used in multiple classes.
 
 ```yaml
 classes:
@@ -57,16 +70,15 @@ classes:
       - end_longitude
 ```
 
-**Benefits**:
+#### Why is this a good approach?
 
 - Machine-readable data dictionary
-- Type validation and constraints
-- Documents units and ERDDAP sources
-- Can validate incoming data
+- Document units and sources
+- directs data validation for QC (e.g. are all dates actually dates?)
 
-### 3. Mapping Schema (LinkML)
+### 3. Link Mappings to Darwin Core
 
-The `ow1-to-dwc-mappings.yaml` schema defines the **target structure** (Darwin Core) and maps it back to source fields:
+How does Darwin Core compare to our model? Here is an example of the Darwin Core term `eventDate`, which happens to match our trawl term, `time`, exactly. No additional context is needed.
 
 ```yaml
 slots:
@@ -77,22 +89,31 @@ slots:
       - ow1_catch:time  # Shows source field
 ```
 
-**Key feature**: `exact_mappings` creates an explicit link between Darwin Core terms and OW1 source fields.
+But what about when they don't match up exactly?  Here we began to decide what we will do. Importantly, we're capturing the information in a structured way so it can be leveraged later.
 
-### 4. Generic Transformation Engine
-
-The `MappingEngine` class reads LinkML mappings and automatically renames fields:
-
-```python
-class MappingEngine:
-    def transform_dataframe(self, source_df, target_class):
-        # Reads exact_mappings from schema
-        # Automatically renames matching 1:1 fields
-        # Handles type conversion
-        return transformed_df
+```
+  decimalLongitude:
+    description: >-
+      The geographic longitude in decimal degrees of the geographic center of a Location.
+    range: float
+    slot_uri: dwc:decimalLongitude
+    unit:
+      ucum_code: deg
+    related_mappings:
+      - ow1_catch:start_longitude
+      - ow1_catch:end_longitude
+    comments:
+      - "Calculate midpoint from TowRecord.start_longitude and TowRecord.end_longitude"
+      - "Or use start_longitude as representative point"
 ```
 
+### 4. Create a Darwin Core Archive: Ready for OBIS/GBIF
+
+Here we have python code to take our LinkML instructions and create a valid Darwin Core Archive for sharing to OBIS and GBIF.
+
 **What it handles automatically**:
+
+_Some things we can easily reuse across data sources_
 
 - Simple 1:1 field renames (e.g., `time` → `eventDate`)
 - Type conversions (string, float, integer)
@@ -100,78 +121,17 @@ class MappingEngine:
 
 **What requires custom logic**:
 
+_Some things will require careful consideration of how that particular dataset works_
+
 - Complex field generation (IDs, hierarchies)
 - Calculated fields (midpoints, WKT geometries)
 - Multi-source field merging
 
-### 5. Darwin Core Transformation
+**The bottom line**
 
-The `DwCTransformer` combines auto-renaming with custom business logic:
+As much as possible we're using templates and generic functions to make this reusable and quickly implemented for a fisheries dataset.
 
-#### Event Core (Hierarchical)
-
-Creates **two levels** of events:
-
-1. **Cruise-level parents** (one per cruise)
-2. **Tow-level children** (one per station/tow)
-
-```python
-# Cruise event
-{
-    'eventID': 'OW1_BT2301',
-    'parentEventID': None,
-    'eventType': 'cruise'
-}
-
-# Tow event  
-{
-    'eventID': 'OW1_BT2301:C01',
-    'parentEventID': 'OW1_BT2301',
-    'eventType': 'tow',
-    'footprintWKT': 'LINESTRING(-74.2 39.5, -74.18 39.52)'
-}
-```
-
-**Why hierarchical?** Allows aggregation at cruise level while preserving individual tow detail.
-
-#### Occurrence Extension
-
-One occurrence per species (or species + size class) caught in a tow:
-
-- Links to tow event via `eventID`
-- Enriched with taxonomic info via species lookup
-- ITIS TSNs formatted as LSIDs
-
-#### Extended Measurement or Fact (eMoF)
-
-Measurements separated from occurrences:
-
-- Total weight (kg)
-- Total count (individuals)
-- Mean length (mm)
-- Length standard deviation (mm)
-- Size class (categorical)
-
-**Why eMoF?** Keeps occurrence records clean and allows multiple measurement types per observation.
-
-### 6. Metadata Generation (EML)
-
-The `EMLGenerator` fetches ERDDAP metadata and creates Ecological Metadata Language XML:
-
-```python
-metadata = fetch_metadata('bottom_trawl_survey_ow1_catch')
-eml_xml = generate_eml_xml(metadata)
-```
-
-Maps ERDDAP `NC_GLOBAL` attributes to EML elements:
-
-- Dataset title and abstract
-- Creator/publisher info
-- Project details and funding
-- Methods and sampling protocols
-- Keywords and coverage
-
-### 7. Darwin Core Archive Output
+####  The Darwin Core Archive Output
 
 The pipeline produces a ZIP file containing:
 
@@ -184,120 +144,11 @@ ow1_dwca.zip
 └── eml.xml                             # Dataset metadata
 ```
 
-**File format**: Tab-delimited text with UTF-8 encoding
 
-**Archive descriptor** (`meta.xml`): Defines relationships between files and maps columns to Darwin Core terms
-
-### 8. Publication to OBIS/GBIF
+#### Publication to OBIS/GBIF
 
 The resulting archive can be:
 
 - Uploaded directly to OBIS/GBIF Integrated Publishing Toolkit (IPT)
 - Validated using GBIF Data Validator
 - Published to make data globally discoverable
-
-## Data Flow Detail
-
-```mermaid
-graph LR
-    subgraph Source
-    A1[Tows CSV]
-    A2[Catch CSV]
-    A3[Species CSV]
-    end
-    
-    subgraph Transform
-    B1[Event Core]
-    B2[Occurrence Ext]
-    B3[eMoF Ext]
-    end
-    
-    subgraph Archive
-    C1[event.txt]
-    C2[occurrence.txt]
-    C3[emof.txt]
-    C4[meta.xml]
-    C5[eml.xml]
-    end
-    
-    A1 --> B1
-    A2 --> B2
-    A2 --> B3
-    A3 --> B2
-    
-    B1 --> C1
-    B2 --> C2
-    B3 --> C3
-    
-    C1 --> D[DwC-A ZIP]
-    C2 --> D
-    C3 --> D
-    C4 --> D
-    C5 --> D
-    
-    D --> E[OBIS/GBIF]
-```
-
-## Record Counts
-
-From the OW1 dataset:
-
-| Component | Records | Notes |
-|-----------|---------|-------|
-| **Source Data** | | |
-| Tows | 80 | Individual trawl events |
-| Catch records | 1,181 | Species per tow (some with size classes) |
-| Species codes | 200+ | Taxonomic lookup table |
-| **Darwin Core Output** | | |
-| Event core | 82 | 2 cruises + 80 tows (hierarchical) |
-| Occurrence extension | 1,181 | One per catch record |
-| eMoF extension | 5,623 | ~5 measurements per catch record |
-
-## Key Design Decisions
-
-### Hierarchical Events
-
-**Decision**: Use two-level event hierarchy (cruise → tow) rather than flat structure.
-
-**Rationale**: 
-
-- Allows cruise-level aggregation
-- Matches survey design (cruises contain multiple tows)
-- Enables cruise-level metadata (temporal coverage, participants)
-
-### Measurements in eMoF
-
-**Decision**: Place all measurements in eMoF extension rather than occurrence fields.
-
-**Rationale**:
-
-- Keeps occurrence records focused on taxon and presence
-- Allows multiple measurement types per observation
-- Better supports measurement metadata (method, accuracy, units)
-- Follows OBIS best practices
-
-### Size Class as Measurement
-
-**Decision**: Treat size class as a categorical measurement in eMoF.
-
-**Rationale**:
-
-- Size class is observational data, not taxonomy
-- Allows clear documentation of what "LARGE" means
-- Keeps occurrence records simpler
-
-### WKT Geometries
-
-**Decision**: Use LINESTRING geometries for tow tracks in `footprintWKT`.
-
-**Rationale**:
-
-- Captures actual sampling path
-- More accurate than single point
-- Supported by OBIS/GBIF tools
-
-## Next Steps
-
-- [Explore the Architecture](architecture/overview.md) for technical details
-- [View Schema Documentation](schemas/source-data.md) to see field definitions
-- [Read the Reusability Guide](reusability.md) to adapt this for other datasets

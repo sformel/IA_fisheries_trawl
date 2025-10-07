@@ -30,10 +30,9 @@ jobs:
         run: |
           pip install mkdocs-material
           pip install mkdocs-mermaid2-plugin
-          pip install linkml
           pip install pymdown-extensions
       
-      - name: Generate schema documentation
+      - name: Verify schema documentation
         run: |
           python scripts/generate_schema_docs.py
       
