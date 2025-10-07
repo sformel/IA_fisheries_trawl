@@ -4,6 +4,6 @@ ERDDAP Data Source
        ↓
 OW1 Catch Records (validated against ow1-catch-schema.yaml)
        ↓
-[Transform] Use dwc-ow1-publication.yaml + eml-ow1-publication.yaml as "recipes"
+[Transform] Use python, directed by ow1-catch-schema.yaml + ow1-to-dwc-mappings.yaml + ow1-to-eml-mappings.yaml as "recipes"
        ↓
-Darwin Core Archive files + EML.xml
+Darwin Core Archive (csv files + EML.xml)
